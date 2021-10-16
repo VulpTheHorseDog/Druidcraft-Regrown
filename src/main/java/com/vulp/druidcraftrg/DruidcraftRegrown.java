@@ -1,5 +1,6 @@
 package com.vulp.druidcraftrg;
 
+import com.vulp.druidcraftrg.client.renderer.RenderSetup;
 import net.minecraftforge.client.event.ParticleFactoryRegisterEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -32,7 +33,7 @@ public class DruidcraftRegrown {
     }
 
     private void clientSetup(final FMLClientSetupEvent event) {
-        // Render Registration Event
+        RenderSetup.setupRenderers(event);
         LOGGER.info("Client setup event complete!");
     }
 
