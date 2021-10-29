@@ -1,6 +1,6 @@
 package com.vulp.druidcraftrg;
 
-import com.vulp.druidcraftrg.client.renderer.RenderSetup;
+import com.vulp.druidcraftrg.client.renderer.SetupRenderers;
 import net.minecraftforge.client.event.ParticleFactoryRegisterEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -11,11 +11,11 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod("druidcraftrg")
+@Mod("druidcraft-regrown")
 public class DruidcraftRegrown {
 
     public static final Logger LOGGER = LogManager.getLogger();
-    public static final String MODID = "druidcraft_regrown";
+    public static final String MODID = "druidcraft-regrown";
 
     public DruidcraftRegrown() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -33,7 +33,7 @@ public class DruidcraftRegrown {
     }
 
     private void clientSetup(final FMLClientSetupEvent event) {
-        RenderSetup.setupRenderers(event);
+        SetupRenderers.setup(event);
         LOGGER.info("Client setup event complete!");
     }
 

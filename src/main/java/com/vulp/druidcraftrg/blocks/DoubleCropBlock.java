@@ -9,6 +9,8 @@ import net.minecraft.state.StateContainer;
 import net.minecraft.state.properties.BlockStateProperties;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.shapes.ISelectionContext;
+import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
@@ -18,10 +20,28 @@ import java.util.Random;
 public class DoubleCropBlock extends CropsBlock {
 
     public static final BooleanProperty BOTTOM = BlockStateProperties.BOTTOM;
+    private final VoxelShape[] SHAPE_ARRAY;
 
-    public DoubleCropBlock(Properties properties) {
+    public DoubleCropBlock(double radius, Properties properties) {
         super(properties);
-        this.registerDefaultState(this.stateDefinition.any().setValue(BOTTOM, true));
+        radius = MathHelper.clamp(radius, 0.0D, 8.0D);
+        double a = 8.0D - radius;
+        double b = 8.0D + radius;
+        this.SHAPE_ARRAY = new VoxelShape[]{
+                Block.box(a, 0.0D, a, b, 2.0D, b),
+                Block.box(a, 0.0D, a, b, 4.0D, b),
+                Block.box(a, 0.0D, a, b, 6.0D, b),
+                Block.box(a, 0.0D, a, b, 8.0D, b),
+                Block.box(a, 0.0D, a, b, 10.0D, b),
+                Block.box(a, 0.0D, a, b, 12.0D, b),
+                Block.box(a, 0.0D, a, b, 14.0D, b),
+                Block.box(a, 0.0D, a, b, 16.0D, b)};
+        this.registerDefaultState(this.defaultBlockState().setValue(BOTTOM, true));
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
+        return SHAPE_ARRAY[state.getValue(this.getAgeProperty())];
     }
 
     private boolean isBottom(BlockState state) {
