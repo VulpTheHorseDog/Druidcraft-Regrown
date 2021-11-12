@@ -1,11 +1,12 @@
 package com.vulp.druidcraftrg;
 
-import com.vulp.druidcraftrg.blocks.BeamBlock;
-import com.vulp.druidcraftrg.blocks.DoubleCropBlock;
-import com.vulp.druidcraftrg.blocks.PlatformBlock;
-import com.vulp.druidcraftrg.blocks.RopeBlock;
+import com.vulp.druidcraftrg.blocks.*;
 import com.vulp.druidcraftrg.blocks.tile.BeamTileEntity;
 import com.vulp.druidcraftrg.blocks.tile.RopeTileEntity;
+import com.vulp.druidcraftrg.capabilities.ITempSpawn;
+import com.vulp.druidcraftrg.capabilities.TempSpawn;
+import com.vulp.druidcraftrg.capabilities.TempSpawnProvider;
+import com.vulp.druidcraftrg.capabilities.TempSpawnStorage;
 import com.vulp.druidcraftrg.client.renderer.SetupRenderers;
 import com.vulp.druidcraftrg.init.BlockInit;
 import com.vulp.druidcraftrg.init.ItemInit;
@@ -16,15 +17,13 @@ import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
+import net.minecraft.item.*;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.TextureStitchEvent;
+import net.minecraftforge.common.capabilities.CapabilityManager;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -50,7 +49,8 @@ public class DruidcraftRegrownRegistry {
                 ItemInit.hemp_seeds = new DoubleCropSeedItem(BlockInit.hemp_crop, new Item.Properties().tab(DC_TAB)).setRegistryName(location("hemp_seeds")),
                 ItemInit.rope = new BlockItem(BlockInit.rope, new Item.Properties().tab(DC_TAB)).setRegistryName(location("rope")), // redo texture.
                 ItemInit.platform = new BlockItem(BlockInit.platform, new Item.Properties().tab(DC_TAB)).setRegistryName(location("platform")),
-                ItemInit.beam = new BlockItem(BlockInit.beam, new Item.Properties().tab(DC_TAB)).setRegistryName(location("beam"))
+                ItemInit.beam = new BlockItem(BlockInit.beam, new Item.Properties().tab(DC_TAB)).setRegistryName(location("beam")),
+                ItemInit.bedroll = new BedItem(BlockInit.bedroll, new Item.Properties().tab(DC_TAB)).setRegistryName(location("bedroll"))
         );
 
         DruidcraftRegrown.LOGGER.info("Items Registered!");
@@ -68,8 +68,6 @@ public class DruidcraftRegrownRegistry {
     * */
 
 
-
-
     // BLOCK REGISTRATION!
     @SubscribeEvent
     public static void blockRegistryEvent(final RegistryEvent.Register<Block> event) {
@@ -77,7 +75,8 @@ public class DruidcraftRegrownRegistry {
                 BlockInit.hemp_crop = new DoubleCropBlock(7.0D, AbstractBlock.Properties.of(Material.PLANT).sound(SoundType.CROP).noCollission().randomTicks().instabreak()).setRegistryName(location("hemp_crop")),
                 BlockInit.rope = new RopeBlock(2.5D, 2.5D, AbstractBlock.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(0.4F)).setRegistryName(location("rope")),
                 BlockInit.platform = new PlatformBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F).noOcclusion()).setRegistryName(location("platform")),
-                BlockInit.beam = new BeamBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("beam"))
+                BlockInit.beam = new BeamBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("beam")),
+                BlockInit.bedroll = new BedrollBlock(DyeColor.RED, AbstractBlock.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(1.0F)).setRegistryName(location("bedroll"))
         );
 
         DruidcraftRegrown.LOGGER.info("Blocks Registered!");
@@ -94,6 +93,12 @@ public class DruidcraftRegrownRegistry {
         DruidcraftRegrown.LOGGER.info("Tile Entities Registered!");
     }
 
+    // CAPABILITY REGISTRATION!
+    public static void registerCapabilities() {
+        CapabilityManager.INSTANCE.register(ITempSpawn.class, new TempSpawnStorage(), TempSpawn::new);
+        DruidcraftRegrown.LOGGER.info("Capabilities Registered!");
+    }
+
     // TEXTURE STITCHING!
     @SubscribeEvent
     @OnlyIn(Dist.CLIENT)
@@ -105,5 +110,4 @@ public class DruidcraftRegrownRegistry {
     public static ResourceLocation location(String name) {
         return new ResourceLocation("druidcraftrg", name);
     }
-
 }

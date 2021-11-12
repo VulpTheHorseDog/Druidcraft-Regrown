@@ -29,6 +29,7 @@ public class DruidcraftRegrown {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         // Packet Handler Initialization
+        DruidcraftRegrownRegistry.registerCapabilities();
         LOGGER.info("Common setup event complete!");
     }
 

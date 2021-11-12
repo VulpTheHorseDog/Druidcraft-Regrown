@@ -4,7 +4,8 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "druidcraftrg.refmap.json",
   "mixins": [
-    "LivingEntityMixin"
+    "LivingEntityMixin",
+    "PlayerListMixin"
   ],
   "client": [
   ],
