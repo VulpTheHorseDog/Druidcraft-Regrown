@@ -16,10 +16,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class CrateBlock extends ContainerBlock {
 
@@ -30,6 +27,7 @@ public class CrateBlock extends ContainerBlock {
     private static final List<CrateType> WEST_CRATES = CrateType.typeListFromDirection(Direction.WEST);
     private static final List<CrateType> UP_CRATES = CrateType.typeListFromDirection(Direction.UP);
     private static final List<CrateType> DOWN_CRATES = CrateType.typeListFromDirection(Direction.DOWN);
+    private static final int[] CRATE_TYPE_START_POINTS = new int[]{0, 8, 12, 16, 20, 22, 24, 26};
 
     public CrateBlock(Properties properties) {
         super(properties);
@@ -64,48 +62,90 @@ public class CrateBlock extends ContainerBlock {
         int centre = 13;
         int ticker = 0;
 
-        for (int j = 0; j < 2; j++) {
-            for (int i = 0; i < 2; i++) {
-                for (int k = 0; k < 2; k++) {
-                    boolean latch = true;
-                    for (int y = -j; y < 2 - j; y++) {
-                        for (int x = -i; x < 2 - i; x++) {
-                            for (int z = -k; z < 2 - k; z++) {
-                                if (!boolArray[13 + (x * 3) + (y * 9) + z]) {
-                                    latch = false;
-                                    break;
+        for (int m = 0; m < 7; m++) {
+            for (int j = 0; j < (m == 3 || (m > 3 && m != 6) ? 1 : 2); j++) {
+                for (int i = 0; i < (m == 2 || (m > 3 && m != 5)  ? 1 : 2); i++) {
+                    for (int k = 0; k < (m == 1 || (m > 3 && m != 4)  ? 1 : 2); k++) {
+                        boolean latch = true;
+                        // Large crate checker:
+                        if (m == 0) {
+                            for (int y = -j; y < 2 - j; y++) {
+                                for (int x = -i; x < 2 - i; x++) {
+                                    for (int z = -k; z < 2 - k; z++) {
+                                        if (!boolArray[13 + (x * 3) + (y * 9) + z]) {
+                                            latch = false;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (m < 4) {
+                            // Wide crate checker:
+                            for (int y = -j; y < (m == 3 ? 1 : 2 - j); y++) {
+                                for (int x = -i; x < (m == 2 ? 1 : 2 - i); x++) {
+                                    for (int z = -k; z < (m == 1 ? 1 : 2 - k); z++) {
+                                        if (!boolArray[13 + (x * 3) + (y * 9) + z]) {
+                                            latch = false;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            for (int y = -j; y < (m != 6 ? 1 : 2 - j); y++) {
+                                for (int x = -i; x < (m != 5 ? 1 : 2 - i); x++) {
+                                    for (int z = -k; z < (m != 4 ? 1 : 2 - k); z++) {
+                                        if (!boolArray[13 + (x * 3) + (y * 9) + z]) {
+                                            latch = false;
+                                            break;
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                    if (latch) {
-                        CrateType placeType = CrateType.values()[ticker];
-                        HashMap<BlockPos, CrateType> map = checkConfigValid(world, pos, placeType);
-                        if (map != null) {
-                            DruidcraftRegrown.LOGGER.debug("LARGE CRATE DETECTED! [" + ticker + "]");
-                            map.forEach((blockPos, crateType) -> world.setBlock(blockPos, BlockInit.crate.defaultBlockState().setValue(TYPE, crateType), 2));
-                            return placeType;
+                        if (latch) {
+                            CrateType placeType = CrateType.values()[ticker];
+                            DruidcraftRegrown.LOGGER.debug("Crate attempted. [" + ticker + "]");
+                            HashMap<BlockPos, CrateType> map = checkConfigValid(world, pos, placeType, ticker);
+                            if (map != null) {
+                                DruidcraftRegrown.LOGGER.debug("CRATE DETECTED! [" + ticker + "]");
+                                map.forEach((blockPos, crateType) -> world.setBlock(blockPos, BlockInit.crate.defaultBlockState().setValue(TYPE, crateType), 2));
+                                return placeType;
+                            }
                         }
+                        ticker++;
                     }
-                    ticker++;
                 }
             }
         }
         return CrateType.SMALL;
     }
 
-    // ONLY CHECKS FOR THE PLACED BLOCK MEANING THAT SOME BLOCKS IN CONFIG CAN STILL BE BAD BUT STILL WORK
     @Nullable
-    private HashMap<BlockPos, CrateType> checkConfigValid(World world, BlockPos pos, CrateType type) {
+    private HashMap<BlockPos, CrateType> checkConfigValid(World world, BlockPos pos, CrateType type, int oldTicker) {
         HashMap<BlockPos, CrateType> map = new HashMap<>();
-        List<Direction> directions = Arrays.asList(type.getOpenDirections());
-        directions.removeIf(direction -> directions.contains(direction.getOpposite()));
+        List<Direction> directions = new LinkedList<>(Arrays.asList(type.getOpenDirections()));
+        // Messy way of handling this, I know. Too lazy to mend it.
+        List<Direction> oppositeCache = new ArrayList<>(Collections.emptyList());
+        directions.removeIf(direction -> {
+            Direction opposite = direction.getOpposite();
+            oppositeCache.add(opposite);
+            return directions.contains(opposite) || oppositeCache.contains(direction);
+        });
         int[] integers = new int[]{0, 0, 0};
         for (Direction dir : directions) {
             integers[dir.getAxis().ordinal()] = dir.getStepX() + dir.getStepY() + dir.getStepZ();
         }
-        // Ticker here is only assuming we start at 0, which is only doable for big crates. Fix later.
-        int ticker = 0;
+        // Below is an attempted fix to get the ticker to start at the start of its own crate type.
+        for (int i = 0; i < 8; i++) {
+            int finalOldTicker = oldTicker;
+            if (Arrays.stream(CRATE_TYPE_START_POINTS).noneMatch(j -> j == finalOldTicker)) {
+                oldTicker--;
+            } else {
+                break;
+            }
+        }
+        int ticker = oldTicker;
         for (int y = 0; y < (integers[1] == 0 ? 1 : 2); y++) {
             for (int x = 0; x < (integers[0] == 0 ? 1 : 2); x++) {
                 for (int z = 0; z < (integers[2] == 0 ? 1 : 2); z++) {
@@ -114,10 +154,11 @@ public class CrateBlock extends ContainerBlock {
                     int zPos = pos.getZ() + z - (integers[2] == -1 ? 1 : 0);
                     BlockPos dynamicPos = new BlockPos(xPos, yPos, zPos);
                     if (dynamicPos.getX() != pos.getX() || dynamicPos.getY() != pos.getY() || dynamicPos.getZ() != pos.getZ()) {  // The last block placed will not turn here, as it is placed after the fact.
-
                         if (!world.isClientSide)
                             DruidcraftRegrown.LOGGER.debug(dynamicPos);
                         CrateType dynamicCrateType = CrateType.values()[ticker];
+                        if (!world.isClientSide)
+                            DruidcraftRegrown.LOGGER.debug(dynamicCrateType.getSerializedName());
                         for (Direction dir : dynamicCrateType.getOpenDirections()) {
                             BlockState state = world.getBlockState(dynamicPos);
                             if (state.getBlock() != this || Arrays.stream(state.getValue(TYPE).getOpenDirections()).noneMatch(openDir -> openDir == dir)) {
@@ -132,23 +173,6 @@ public class CrateBlock extends ContainerBlock {
             }
         }
         return map;
-    }
-
-    private static List<CrateType> getTypeListFromDirection(Direction direction) {
-        switch (direction) {
-            case SOUTH:
-                return SOUTH_CRATES;
-            case EAST:
-                return EAST_CRATES;
-            case WEST:
-                return WEST_CRATES;
-            case UP:
-                return UP_CRATES;
-            case DOWN:
-                return DOWN_CRATES;
-            default:
-                return NORTH_CRATES;
-        }
     }
 
     private void debugArrayCreation(boolean[] boolArray) {
