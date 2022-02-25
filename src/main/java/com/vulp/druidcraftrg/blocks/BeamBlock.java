@@ -216,7 +216,6 @@ public class BeamBlock extends Block implements IBucketPickupHandler, ILiquidCon
         BlockPos pos = context.getClickedPos();
         World world = context.getLevel();
         Direction.Axis facing = context.getClickedFace().getAxis();
-        // NEED TO UPDATE AN UNBORN TE HERE SOMEHOW.
         return this.defaultBlockState().setValue(X_AXIS, facing == Direction.Axis.X || this.shouldConnectOnAxis(world, pos, Direction.Axis.X)).setValue(Y_AXIS, facing == Direction.Axis.Y || this.shouldConnectOnAxis(world, pos, Direction.Axis.Y)).setValue(Z_AXIS, facing == Direction.Axis.Z || this.shouldConnectOnAxis(world, pos, Direction.Axis.Z)).setValue(DEFAULT_AXIS, facing).setValue(WATERLOGGED, world.getFluidState(pos).getType() == Fluids.WATER);
     }
 

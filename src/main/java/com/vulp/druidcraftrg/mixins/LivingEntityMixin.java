@@ -22,10 +22,12 @@ public abstract class LivingEntityMixin {
 
     @Shadow public abstract void calculateEntityAnimation(LivingEntity p_233629_1_, boolean p_233629_2_);
 
+    // TODO: Animation of player arms while on rope? Alternate one when player is hanging underneath and no animation when player is on top.
+
     @Inject(at = @At("HEAD"), method = "travel", cancellable = true)
     private void travel(Vector3d vec, CallbackInfo ci) {
         if (getThis() instanceof PlayerEntity) {
-            if ((this.isEffectiveAi() || getThis().isControlledByLocalInstance()) && (RopeBlock.isEntityInBlock(getThis()) && !this.jumping && !getThis().isCrouching())) {
+            if ((this.isEffectiveAi() || getThis().isControlledByLocalInstance()) && (RopeBlock.isEntityInBlock(getThis()) && !this.jumping && !getThis().isCrouching() && !getThis().isOnGround())) {
                 float f3 = getThis().level.getBlockState(getThis().getBlockPosBelowThatAffectsMyMovement()).getSlipperiness(getThis().level, getThis().getBlockPosBelowThatAffectsMyMovement(), getThis());
                 float f4 = getThis().onGround ? f3 * 0.91F : 0.91F;
                 Vector3d vector3d5 = this.handleRelativeFrictionAndCalculateMovement(vec, f3);

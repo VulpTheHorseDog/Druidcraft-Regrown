@@ -1,0 +1,85 @@
+{
+  "variants": {
+    "type=small": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_west": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_east": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_south": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_north": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_west_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_west_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_east_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_east_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_south_west": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_south_east": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_north_west": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_north_east": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_south_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_north_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_south_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=medium_north_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_small"
+    },
+	"type=large_north_west_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_north_west_down"
+    },
+	"type=large_south_west_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_south_west_down"
+    },
+	"type=large_north_east_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_north_east_down"
+    },
+	"type=large_south_east_down": {
+      "model": "druidcraftrg:block/crates/oak_crate_south_east_down"
+    },
+	"type=large_north_west_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_north_west_up"
+    },
+	"type=large_south_west_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_south_west_up"
+    },
+	"type=large_north_east_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_north_east_up"
+    },
+	"type=large_south_east_up": {
+      "model": "druidcraftrg:block/crates/oak_crate_south_east_up"
+    }
+  }
+}

@@ -10,7 +10,7 @@ import net.minecraftforge.common.util.LazyOptional;
 public class TempSpawnProvider implements ICapabilitySerializable<INBT> {
 
     @CapabilityInject(ITempSpawn.class)
-    public static final Capability<ITempSpawn> TEMP_SPAWN = null;
+    public static Capability<ITempSpawn> TEMP_SPAWN = null;
 
     private LazyOptional<ITempSpawn> INSTANCE = LazyOptional.of(TEMP_SPAWN::getDefaultInstance);
 

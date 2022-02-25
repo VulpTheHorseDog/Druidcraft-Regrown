@@ -2,8 +2,7 @@
 	"credit": "Made with Blockbench",
 	"textures": {
 		"1": "druidcraftrg:block/hemp_crop_bottom_6",
-		"2": "druidcraftrg:block/hemp_crop_leaves_small_ripe",
-		"3": "druidcraftrg:block/hemp_crop_leaves_small",
+		"2": "druidcraftrg:block/hemp_crop_leaves_small",
 		"particle": "druidcraftrg:block/hemp_crop_bottom_6"
 	},
 	"elements": [
@@ -43,8 +42,8 @@
 			"to": [16, 4, 16],
 			"rotation": {"angle": -22.5, "axis": "z", "origin": [8, 4, 8]},
 			"faces": {
-				"up": {"uv": [0, 0, 16, 16], "texture": "#3"},
-				"down": {"uv": [0, 0, 16, 16], "texture": "#3"}
+				"up": {"uv": [0, 0, 16, 16], "texture": "#2"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#2"}
 			}
 		}
 	]

@@ -9,5 +9,6 @@ public class BlockInit {
     public static Block platform;
     public static Block beam;
     public static Block bedroll;
+    public static Block crate;
 
 }

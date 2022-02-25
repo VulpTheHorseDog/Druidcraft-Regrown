@@ -18,11 +18,15 @@ import net.minecraft.server.management.DemoPlayerInteractionManager;
 import net.minecraft.server.management.PlayerInteractionManager;
 import net.minecraft.server.management.PlayerList;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.RegistryKey;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvents;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Vector3d;
+import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeManager;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraft.world.storage.IWorldInfo;
@@ -58,10 +62,23 @@ public abstract class PlayerListMixin {
     @Inject(at = @At("HEAD"), method = "respawn", cancellable = true)
     private void respawn(ServerPlayerEntity player, boolean bool, CallbackInfoReturnable<ServerPlayerEntity> cir) {
         Optional<ITempSpawn> spawnData = player.getCapability(TempSpawnProvider.TEMP_SPAWN).resolve();
+        // For some reason the second time you try and respawn, the below if statement is not passed. Because the capability returns null. Likely because of the janky capability handling in the first place.
         if (spawnData.isPresent() && spawnData.get().hasSpawnData()) {
             SpawnDataHolder holder = spawnData.get().getSpawnData();
             ServerWorld serverworld = this.server.getLevel(holder.getDimension());
-            if (serverworld.getBlockState(holder.getPos()).getBlock() instanceof BedrollBlock) {
+            if (holder.getPos() != null && serverworld.getBlockState(holder.getPos()).getBlock() instanceof BedrollBlock) {
+                ServerWorld tempWorld = this.server.getLevel(player.getRespawnDimension());
+                BlockPos mainBedPos = player.getRespawnPosition();
+                float mainBedAngle = player.getRespawnAngle();
+                boolean mainBedForce = player.isRespawnForced();
+                Optional<Vector3d> opt;
+                // Below probably actially respawns the player. Make sure that doesnt happen and it just detects if block is there.
+                if (tempWorld != null && mainBedPos != null) {
+                    opt = PlayerEntity.findRespawnPositionAndUseSpawnBlock(serverworld, mainBedPos, mainBedAngle, mainBedForce, bool);
+                } else {
+                    opt = Optional.empty();
+                }
+                ServerWorld mainBedWorld = tempWorld != null && opt.isPresent() ? tempWorld : this.server.overworld();
                 this.removePlayer(player);
                 player.getLevel().removePlayer(player, true); // Forge: keep data until copyFrom called
                 BlockPos pos = holder.getPos();
@@ -94,13 +111,16 @@ public abstract class PlayerListMixin {
                 }
 
                 this.updatePlayerGameMode(serverplayerentity, player, serverworld1);
-                if (optional.isPresent()) {
+
+                boolean flag = optional.isPresent();
+                if (flag) {
                     Vector3d vector3d = optional.get();
                     Vector3d vector3d1 = Vector3d.atBottomCenterOf(pos).subtract(vector3d).normalize();
                     float f1 = (float) MathHelper.wrapDegrees(MathHelper.atan2(vector3d1.z, vector3d1.x) * (double) (180F / (float) Math.PI) - 90.0D);
-
                     serverplayerentity.moveTo(vector3d.x, vector3d.y, vector3d.z, f1, 0.0F);
-                    serverplayerentity.setRespawnPosition(serverworld1.dimension(), pos, angle, forceRespawn, false);
+                    serverplayerentity.setRespawnPosition(mainBedWorld.dimension(), mainBedPos, mainBedAngle, mainBedForce, false);
+                    Optional<ITempSpawn> tempSpawnNew = serverplayerentity.getCapability(TempSpawnProvider.TEMP_SPAWN).resolve();
+                    tempSpawnNew.ifPresent(iTempSpawn -> iTempSpawn.setSpawnData(holder));
                 } else if (pos != null) {
                     serverplayerentity.connection.send(new SChangeGameStatePacket(SChangeGameStatePacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
                 }

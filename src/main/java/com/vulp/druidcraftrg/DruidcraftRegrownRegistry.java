@@ -50,7 +50,8 @@ public class DruidcraftRegrownRegistry {
                 ItemInit.rope = new BlockItem(BlockInit.rope, new Item.Properties().tab(DC_TAB)).setRegistryName(location("rope")), // redo texture.
                 ItemInit.platform = new BlockItem(BlockInit.platform, new Item.Properties().tab(DC_TAB)).setRegistryName(location("platform")),
                 ItemInit.beam = new BlockItem(BlockInit.beam, new Item.Properties().tab(DC_TAB)).setRegistryName(location("beam")),
-                ItemInit.bedroll = new BedItem(BlockInit.bedroll, new Item.Properties().tab(DC_TAB)).setRegistryName(location("bedroll"))
+                ItemInit.bedroll = new BedItem(BlockInit.bedroll, new Item.Properties().tab(DC_TAB)).setRegistryName(location("bedroll")),
+                ItemInit.crate = new BlockItem(BlockInit.crate, new Item.Properties().tab(DC_TAB)).setRegistryName(location("crate"))
         );
 
         DruidcraftRegrown.LOGGER.info("Items Registered!");
@@ -76,7 +77,8 @@ public class DruidcraftRegrownRegistry {
                 BlockInit.rope = new RopeBlock(2.5D, 2.5D, AbstractBlock.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(0.4F)).setRegistryName(location("rope")),
                 BlockInit.platform = new PlatformBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F).noOcclusion()).setRegistryName(location("platform")),
                 BlockInit.beam = new BeamBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("beam")),
-                BlockInit.bedroll = new BedrollBlock(DyeColor.RED, AbstractBlock.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(1.0F)).setRegistryName(location("bedroll"))
+                BlockInit.bedroll = new BedrollBlock(DyeColor.RED, AbstractBlock.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(1.0F)).setRegistryName(location("bedroll")),
+                BlockInit.crate = new CrateBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("crate"))
         );
 
         DruidcraftRegrown.LOGGER.info("Blocks Registered!");

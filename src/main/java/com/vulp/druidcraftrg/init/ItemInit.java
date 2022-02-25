@@ -10,5 +10,6 @@ public class ItemInit {
     public static Item platform;
     public static Item beam;
     public static Item bedroll;
+    public static Item crate;
 
 }

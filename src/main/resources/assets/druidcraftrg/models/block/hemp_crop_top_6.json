@@ -3,7 +3,6 @@
 	"textures": {
 		"1": "druidcraftrg:block/hemp_crop_top_6",
 		"2": "druidcraftrg:block/hemp_crop_leaves_small",
-		"3": "druidcraftrg:block/hemp_crop_leaves_small_ripe",
 		"particle": "druidcraftrg:block/hemp_crop_top_6"
 	},
 	"elements": [
@@ -38,12 +37,12 @@
 			"to": [16, 2, 16],
 			"rotation": {"angle": -22.5, "axis": "x", "origin": [8, 2, 8]},
 			"faces": {
-				"north": {"uv": [0, 0, 16, 0], "texture": "#3"},
-				"east": {"uv": [0, 0, 16, 0], "texture": "#3"},
-				"south": {"uv": [0, 0, 16, 0], "texture": "#3"},
-				"west": {"uv": [0, 0, 16, 0], "texture": "#3"},
-				"up": {"uv": [0, 0, 16, 16], "rotation": 270, "texture": "#3"},
-				"down": {"uv": [0, 0, 16, 16], "rotation": 90, "texture": "#3"}
+				"north": {"uv": [0, 0, 16, 0], "texture": "#2"},
+				"east": {"uv": [0, 0, 16, 0], "texture": "#2"},
+				"south": {"uv": [0, 0, 16, 0], "texture": "#2"},
+				"west": {"uv": [0, 0, 16, 0], "texture": "#2"},
+				"up": {"uv": [0, 0, 16, 16], "rotation": 270, "texture": "#2"},
+				"down": {"uv": [0, 0, 16, 16], "rotation": 90, "texture": "#2"}
 			}
 		},
 		{
