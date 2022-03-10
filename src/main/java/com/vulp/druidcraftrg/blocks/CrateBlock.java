@@ -11,9 +11,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockReader;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -21,12 +20,6 @@ import java.util.*;
 public class CrateBlock extends ContainerBlock {
 
     public static final EnumProperty<CrateType> TYPE = EnumProperty.create("type", CrateType.class);
-    private static final List<CrateType> NORTH_CRATES = CrateType.typeListFromDirection(Direction.NORTH);
-    private static final List<CrateType> SOUTH_CRATES = CrateType.typeListFromDirection(Direction.SOUTH);
-    private static final List<CrateType> EAST_CRATES = CrateType.typeListFromDirection(Direction.EAST);
-    private static final List<CrateType> WEST_CRATES = CrateType.typeListFromDirection(Direction.WEST);
-    private static final List<CrateType> UP_CRATES = CrateType.typeListFromDirection(Direction.UP);
-    private static final List<CrateType> DOWN_CRATES = CrateType.typeListFromDirection(Direction.DOWN);
     private static final int[] CRATE_TYPE_START_POINTS = new int[]{0, 8, 12, 16, 20, 22, 24, 26};
 
     public CrateBlock(Properties properties) {
@@ -40,7 +33,7 @@ public class CrateBlock extends ContainerBlock {
         return null;
     }
 
-    private boolean[] createCrateArray(World world, BlockPos pos) {
+    private boolean[] createCrateArray(IWorld world, BlockPos pos) {
         boolean[] boolArray = new boolean[27];
         int ticker = 0;
         for (int y = -1; y < 2; y++) {
@@ -56,7 +49,7 @@ public class CrateBlock extends ContainerBlock {
     }
 
     // up/down = increments of 9, east/west = increments of 3.
-    private CrateType detectCrateConfig(World world, BlockPos pos, boolean[] boolArray) {
+    private CrateType detectCrateConfig(IWorld world, BlockPos pos, boolean[] boolArray, boolean updateConfig) {
         int x_increment = 3;
         int y_increment = 9;
         int centre = 13;
@@ -92,6 +85,7 @@ public class CrateBlock extends ContainerBlock {
                                 }
                             }
                         } else {
+                            // Thin crate checker:
                             for (int y = -j; y < (m != 6 ? 1 : 2 - j); y++) {
                                 for (int x = -i; x < (m != 5 ? 1 : 2 - i); x++) {
                                     for (int z = -k; z < (m != 4 ? 1 : 2 - k); z++) {
@@ -109,7 +103,9 @@ public class CrateBlock extends ContainerBlock {
                             HashMap<BlockPos, CrateType> map = checkConfigValid(world, pos, placeType, ticker);
                             if (map != null) {
                                 DruidcraftRegrown.LOGGER.debug("CRATE DETECTED! [" + ticker + "]");
-                                map.forEach((blockPos, crateType) -> world.setBlock(blockPos, BlockInit.crate.defaultBlockState().setValue(TYPE, crateType), 2));
+                                if (updateConfig) {
+                                    map.forEach((blockPos, crateType) -> world.setBlock(blockPos, BlockInit.crate.defaultBlockState().setValue(TYPE, crateType), 2));
+                                }
                                 return placeType;
                             }
                         }
@@ -121,17 +117,77 @@ public class CrateBlock extends ContainerBlock {
         return CrateType.SMALL;
     }
 
-    @Nullable
-    private HashMap<BlockPos, CrateType> checkConfigValid(World world, BlockPos pos, CrateType type, int oldTicker) {
-        HashMap<BlockPos, CrateType> map = new HashMap<>();
+    private boolean[] crateTypeToCrateArray(IWorld world, BlockPos pos, CrateType type) {
+        List<Direction> directions = getAttachDirectionsFromType(type);
+        boolean[] array = createCrateArray(world, pos);
+        debugArrayCreation(array);
+        boolean[] arrayMask = new boolean[27];
+        int[] integers = new int[]{0, 0, 0};
+        for (Direction dir : directions) {
+            integers[dir.getAxis().ordinal()] = dir.getStepX() + dir.getStepY() + dir.getStepZ();
+        }
+        for (int y = integers[1] == -1 ? -1 : 0; y < (integers[1] == 1 ? 2 : 1); y++) {
+            for (int x = integers[0] == -1 ? -1 : 0; x < (integers[0] == 1 ? 2 : 1); x++) {
+                for (int z = integers[2] == -1 ? -1 : 0; z < (integers[2] == 1 ? 2 : 1); z++) {
+                    arrayMask[13 + (x * 3) + (y * 9) + z] = true;
+                }
+            }
+        }
+        for (int i = 0; i < arrayMask.length; i++) {
+            if (!arrayMask[i]) {
+                array[i] = false;
+            }
+        }
+        if (!world.isClientSide())
+            debugArrayCreation(array);
+        return array;
+    }
+
+    // Triggers when setBlock() happens! Is a problem.
+    // TODO: On broken, crates outside of original crate bounds are still connected to, which shouldn't happen.
+    @Override
+    public void onRemove(BlockState state, World world, BlockPos pos, BlockState replacingState, boolean bool) {
+        if (replacingState.getBlock() != this) {
+            CrateType type = state.getValue(TYPE);
+            List<Direction> directions = getAttachDirectionsFromType(type);
+            int[] integers = new int[]{0, 0, 0};
+            for (Direction dir : directions) {
+                integers[dir.getAxis().ordinal()] = dir.getStepX() + dir.getStepY() + dir.getStepZ();
+            }
+            List<BlockPos> posList = new ArrayList<>(Collections.emptyList());
+            for (int y = integers[1] == -1 ? -1 : 0; y < (integers[1] == 1 ? 2 : 1); y++) {
+                for (int x = integers[0] == -1 ? -1 : 0; x < (integers[0] == 1 ? 2 : 1); x++) {
+                    for (int z = integers[2] == -1 ? -1 : 0; z < (integers[2] == 1 ? 2 : 1); z++) {
+                        posList.add(pos.offset(x, y, z));
+                    }
+                }
+            }
+            posList.remove(pos);
+            posList.forEach(blockPos -> {
+                BlockState currentState = world.getBlockState(blockPos);
+                if (currentState.getBlock() instanceof CrateBlock) {
+                    currentState.setValue(TYPE, detectCrateConfig(world, blockPos, crateTypeToCrateArray(world, blockPos, currentState.getValue(TYPE)), false)); // Try setting to false sometime?
+                }
+            });
+        }
+        super.onRemove(state, world, pos, replacingState, bool);
+    }
+
+    private List<Direction> getAttachDirectionsFromType(CrateType type) {
         List<Direction> directions = new LinkedList<>(Arrays.asList(type.getOpenDirections()));
-        // Messy way of handling this, I know. Too lazy to mend it.
         List<Direction> oppositeCache = new ArrayList<>(Collections.emptyList());
         directions.removeIf(direction -> {
             Direction opposite = direction.getOpposite();
             oppositeCache.add(opposite);
             return directions.contains(opposite) || oppositeCache.contains(direction);
         });
+        return directions;
+    }
+
+    @Nullable
+    private HashMap<BlockPos, CrateType> checkConfigValid(IWorld world, BlockPos pos, CrateType type, int oldTicker) {
+        HashMap<BlockPos, CrateType> map = new HashMap<>();
+        List<Direction> directions = getAttachDirectionsFromType(type);
         int[] integers = new int[]{0, 0, 0};
         for (Direction dir : directions) {
             integers[dir.getAxis().ordinal()] = dir.getStepX() + dir.getStepY() + dir.getStepZ();
@@ -154,14 +210,14 @@ public class CrateBlock extends ContainerBlock {
                     int zPos = pos.getZ() + z - (integers[2] == -1 ? 1 : 0);
                     BlockPos dynamicPos = new BlockPos(xPos, yPos, zPos);
                     if (dynamicPos.getX() != pos.getX() || dynamicPos.getY() != pos.getY() || dynamicPos.getZ() != pos.getZ()) {  // The last block placed will not turn here, as it is placed after the fact.
-                        if (!world.isClientSide)
-                            DruidcraftRegrown.LOGGER.debug(dynamicPos);
+                        /*if (!world.isClientSide)
+                            DruidcraftRegrown.LOGGER.debug(dynamicPos);*/
                         CrateType dynamicCrateType = CrateType.values()[ticker];
-                        if (!world.isClientSide)
-                            DruidcraftRegrown.LOGGER.debug(dynamicCrateType.getSerializedName());
-                        for (Direction dir : dynamicCrateType.getOpenDirections()) {
+                        /*if (!world.isClientSide)
+                            DruidcraftRegrown.LOGGER.debug(dynamicCrateType.getSerializedName());*/
+                        for (Direction dir : /*(isBreaking ? getAttachDirectionsFromType(dynamicCrateType) : */dynamicCrateType.getOpenDirections())/*)*/ {
                             BlockState state = world.getBlockState(dynamicPos);
-                            if (state.getBlock() != this || Arrays.stream(state.getValue(TYPE).getOpenDirections()).noneMatch(openDir -> openDir == dir)) {
+                            if (state.getBlock() != this || /*(isBreaking ? getAttachDirectionsFromType(state.getValue(TYPE)).stream().noneMatch(openDir -> openDir == dir) : */Arrays.stream(state.getValue(TYPE).getOpenDirections()).noneMatch(openDir -> openDir == dir))/*)*/ {
                                 return null;
                             }
                         }
@@ -189,18 +245,27 @@ public class CrateBlock extends ContainerBlock {
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockItemUseContext context) {
-        World world = context.getLevel();
-        BlockPos pos = context.getClickedPos();
-        CrateType type = CrateType.SMALL;
-        if (context.canPlace()) {
-            boolean[] boolArray = createCrateArray(world, pos);
+        BlockState state = super.getStateForPlacement(context);
+        if (state != null) {
+            World world = context.getLevel();
+            BlockPos pos = context.getClickedPos();
+            CrateType type = CrateType.SMALL;
+            if (context.canPlace()) {
+                boolean[] boolArray = createCrateArray(world, pos);
             /*if (!world.isClientSide) {
                 debugArrayCreation(boolArray);
             }*/
-            type = detectCrateConfig(world, pos, boolArray);
-        }
-        BlockState state = super.getStateForPlacement(context);
-        return state != null ? state.setValue(TYPE, type) : null;
+                type = detectCrateConfig(world, pos, boolArray, true);
+            }
+            return state.setValue(TYPE, type);
+        } else return null;
+    }
+
+    // Triggers when setBlock() happens! Is a problem.
+    @Override
+    public void onPlace(BlockState state, World world, BlockPos pos, BlockState state1, boolean bool) {
+        // detectCrateConfig(world, pos, createCrateArray(world, pos), true);
+        super.onPlace(state, world, pos, state1, bool);
     }
 
     @Override
