@@ -1,15 +1,22 @@
 package com.vulp.druidcraftrg.blocks;
 
 import com.vulp.druidcraftrg.DruidcraftRegrown;
+import com.vulp.druidcraftrg.blocks.tile.CrateTileEntity;
 import com.vulp.druidcraftrg.init.BlockInit;
 import com.vulp.druidcraftrg.state.properties.CrateType;
 import net.minecraft.block.*;
+import net.minecraft.entity.monster.piglin.PiglinTasks;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.container.INamedContainerProvider;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.EnumProperty;
 import net.minecraft.state.StateContainer;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ActionResultType;
 import net.minecraft.util.Direction;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
@@ -20,7 +27,7 @@ import java.util.*;
 public class CrateBlock extends ContainerBlock {
 
     public static final EnumProperty<CrateType> TYPE = EnumProperty.create("type", CrateType.class);
-    private static final int[] CRATE_TYPE_START_POINTS = new int[]{0, 8, 12, 16, 20, 22, 24, 26};
+    public static final int[] CRATE_TYPE_START_POINTS = new int[]{0, 8, 12, 16, 20, 22, 24, 26};
 
     public CrateBlock(Properties properties) {
         super(properties);
@@ -30,7 +37,22 @@ public class CrateBlock extends ContainerBlock {
     @Nullable
     @Override
     public TileEntity newBlockEntity(IBlockReader reader) {
-        return null;
+        return new CrateTileEntity();
+    }
+
+    public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockRayTraceResult rayTrace) {
+        if (world.isClientSide) {
+            return ActionResultType.SUCCESS;
+        } else {
+            INamedContainerProvider inamedcontainerprovider = this.getMenuProvider(state, world, pos);
+            if (inamedcontainerprovider != null) {
+                player.openMenu(inamedcontainerprovider);
+                // player.awardStat(this.getOpenChestStat());
+                PiglinTasks.angerNearbyPiglins(player, true);
+            }
+
+            return ActionResultType.CONSUME;
+        }
     }
 
     private boolean[] createCrateArray(IWorld world, BlockPos pos) {
@@ -166,7 +188,7 @@ public class CrateBlock extends ContainerBlock {
             posList.forEach(blockPos -> {
                 BlockState currentState = world.getBlockState(blockPos);
                 if (currentState.getBlock() instanceof CrateBlock) {
-                    currentState.setValue(TYPE, detectCrateConfig(world, blockPos, crateTypeToCrateArray(world, blockPos, currentState.getValue(TYPE)), false)); // Try setting to false sometime?
+                    world.setBlock(blockPos, currentState.setValue(TYPE, detectCrateConfig(world, blockPos, crateTypeToCrateArray(world, blockPos, currentState.getValue(TYPE)), true)), 2); // Try setting to false sometime?
                 }
             });
         }
@@ -208,16 +230,34 @@ public class CrateBlock extends ContainerBlock {
                     int xPos = pos.getX() + x - (integers[0] == -1 ? 1 : 0);
                     int yPos = pos.getY() + y - (integers[1] == -1 ? 1 : 0);
                     int zPos = pos.getZ() + z - (integers[2] == -1 ? 1 : 0);
+                    // Dynamic is the various blocks it checks against.
                     BlockPos dynamicPos = new BlockPos(xPos, yPos, zPos);
                     if (dynamicPos.getX() != pos.getX() || dynamicPos.getY() != pos.getY() || dynamicPos.getZ() != pos.getZ()) {  // The last block placed will not turn here, as it is placed after the fact.
                         /*if (!world.isClientSide)
                             DruidcraftRegrown.LOGGER.debug(dynamicPos);*/
-                        CrateType dynamicCrateType = CrateType.values()[ticker];
+                        CrateType crateTypeReference = CrateType.values()[ticker]; // Acts as the template that the block needs to fill.
                         /*if (!world.isClientSide)
                             DruidcraftRegrown.LOGGER.debug(dynamicCrateType.getSerializedName());*/
-                        for (Direction dir : /*(isBreaking ? getAttachDirectionsFromType(dynamicCrateType) : */dynamicCrateType.getOpenDirections())/*)*/ {
-                            BlockState state = world.getBlockState(dynamicPos);
-                            if (state.getBlock() != this || /*(isBreaking ? getAttachDirectionsFromType(state.getValue(TYPE)).stream().noneMatch(openDir -> openDir == dir) : */Arrays.stream(state.getValue(TYPE).getOpenDirections()).noneMatch(openDir -> openDir == dir))/*)*/ {
+                        for (Direction dir : getAttachDirectionsFromType(crateTypeReference)) {
+                            BlockState dynamicState = world.getBlockState(dynamicPos);
+                            CrateType dynamicType = dynamicState.getValue(TYPE);
+                            List<Direction> dynamicOpenDirections = Arrays.asList(dynamicType.getOpenDirections());
+
+
+                            boolean flag = false;
+                            if (dynamicType.getCrateSize() == 2 && crateTypeReference.getCrateSize() == 4) {
+                                List<Direction.Axis> axisList = new ArrayList<>(Collections.emptyList());
+                                for (Direction direction : getAttachDirectionsFromType(crateTypeReference)) {
+                                    axisList.add(direction.getAxis());
+                                }
+                                if (!axisList.contains(getAttachDirectionsFromType(dynamicType).get(0).getAxis())) {
+                                    flag = true;
+                                }
+                            }
+
+
+
+                            if (dynamicState.getBlock() != this || dynamicType.getCrateSize() >= crateTypeReference.getCrateSize() || flag || !dynamicOpenDirections.contains(dir)) {
                                 return null;
                             }
                         }

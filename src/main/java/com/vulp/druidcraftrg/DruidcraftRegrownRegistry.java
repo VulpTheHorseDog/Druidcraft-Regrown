@@ -2,6 +2,7 @@ package com.vulp.druidcraftrg;
 
 import com.vulp.druidcraftrg.blocks.*;
 import com.vulp.druidcraftrg.blocks.tile.BeamTileEntity;
+import com.vulp.druidcraftrg.blocks.tile.CrateTileEntity;
 import com.vulp.druidcraftrg.blocks.tile.RopeTileEntity;
 import com.vulp.druidcraftrg.capabilities.ITempSpawn;
 import com.vulp.druidcraftrg.capabilities.TempSpawn;
@@ -89,7 +90,8 @@ public class DruidcraftRegrownRegistry {
     public static void tileRegistryEvent(final RegistryEvent.Register<TileEntityType<?>> event) {
         event.getRegistry().registerAll(
                 TileInit.rope = TileInit.register("rope", TileEntityType.Builder.of(RopeTileEntity::new, BlockInit.rope)),
-                TileInit.beam = TileInit.register("beam", TileEntityType.Builder.of(BeamTileEntity::new, BlockInit.beam))
+                TileInit.beam = TileInit.register("beam", TileEntityType.Builder.of(BeamTileEntity::new, BlockInit.beam)),
+                TileInit.crate = TileInit.register("crate", TileEntityType.Builder.of(CrateTileEntity::new, BlockInit.crate))
         );
 
         DruidcraftRegrown.LOGGER.info("Tile Entities Registered!");
