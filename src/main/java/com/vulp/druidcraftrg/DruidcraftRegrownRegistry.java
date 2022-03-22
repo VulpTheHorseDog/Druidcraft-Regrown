@@ -6,18 +6,20 @@ import com.vulp.druidcraftrg.blocks.tile.CrateTileEntity;
 import com.vulp.druidcraftrg.blocks.tile.RopeTileEntity;
 import com.vulp.druidcraftrg.capabilities.ITempSpawn;
 import com.vulp.druidcraftrg.capabilities.TempSpawn;
-import com.vulp.druidcraftrg.capabilities.TempSpawnProvider;
 import com.vulp.druidcraftrg.capabilities.TempSpawnStorage;
 import com.vulp.druidcraftrg.client.renderer.SetupRenderers;
 import com.vulp.druidcraftrg.init.BlockInit;
+import com.vulp.druidcraftrg.init.ContainerInit;
 import com.vulp.druidcraftrg.init.ItemInit;
 import com.vulp.druidcraftrg.init.TileInit;
+import com.vulp.druidcraftrg.items.DebugWandItem;
 import com.vulp.druidcraftrg.items.DoubleCropSeedItem;
 import com.vulp.druidcraftrg.items.KnifeItem;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
+import net.minecraft.inventory.container.ContainerType;
 import net.minecraft.item.*;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.ResourceLocation;
@@ -44,6 +46,8 @@ public class DruidcraftRegrownRegistry {
     public static void itemRegistryEvent(final RegistryEvent.Register<Item> event) {
         event.getRegistry().registerAll(
                 // ITEMS:
+                ItemInit.debug_wand = new DebugWandItem(new Item.Properties().tab(DC_TAB)).setRegistryName(location("debug_wand")),
+
                 ItemInit.knife = new KnifeItem(new Item.Properties().tab(DC_TAB)).setRegistryName(location("knife")),
 
                 // BLOCKITEMS:
@@ -95,6 +99,19 @@ public class DruidcraftRegrownRegistry {
         );
 
         DruidcraftRegrown.LOGGER.info("Tile Entities Registered!");
+    }
+
+    // CONTAINER REGISTRATION!
+    @SubscribeEvent
+    public static void containerRegistryEvent(final RegistryEvent.Register<ContainerType<?>> event) {
+        event.getRegistry().registerAll(
+                ContainerInit.CRATE_9x3.setRegistryName(DruidcraftRegrown.MODID, "crate_9x3"),
+                ContainerInit.CRATE_9x6.setRegistryName(DruidcraftRegrown.MODID, "crate_9x6"),
+                ContainerInit.CRATE_9x12.setRegistryName(DruidcraftRegrown.MODID, "crate_9x12"),
+                ContainerInit.CRATE_9x24.setRegistryName(DruidcraftRegrown.MODID, "crate_9x24")
+        );
+
+        DruidcraftRegrown.LOGGER.info("Containers Registered!");
     }
 
     // CAPABILITY REGISTRATION!

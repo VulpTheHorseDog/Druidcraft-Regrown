@@ -1,7 +1,10 @@
 package com.vulp.druidcraftrg.blocks.tile;
 
+import com.vulp.druidcraftrg.DruidcraftRegrown;
 import com.vulp.druidcraftrg.blocks.CrateBlock;
 import com.vulp.druidcraftrg.init.TileInit;
+import com.vulp.druidcraftrg.inventory.MultiSidedInventory;
+import com.vulp.druidcraftrg.inventory.container.CrateContainer;
 import com.vulp.druidcraftrg.state.properties.CrateType;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -10,9 +13,11 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.DoubleSidedInventory;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.ItemStackHelper;
 import net.minecraft.inventory.container.ChestContainer;
 import net.minecraft.inventory.container.Container;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.state.properties.ChestType;
 import net.minecraft.tileentity.*;
 import net.minecraft.util.*;
@@ -28,7 +33,9 @@ import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.items.wrapper.InvWrapper;
 
+import javax.annotation.Nonnull;
 import java.util.Arrays;
+import java.util.List;
 
 public class CrateTileEntity extends LockableLootTileEntity implements ITickableTileEntity {
 
@@ -37,6 +44,7 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     protected int openCount;
     private int tickInterval;
     private LazyOptional<IItemHandlerModifiable> crateHandler;
+    private List<BlockPos> crateArray;
 
     protected CrateTileEntity(TileEntityType<?> tileEntityType) {
         super(tileEntityType);
@@ -74,9 +82,9 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
         int ticker = 0;
         float i = 5.0F;
         for(PlayerEntity playerentity : world.getEntitiesOfClass(PlayerEntity.class, new AxisAlignedBB((float)xPos - i, (float)yPos - i, (float)zPos - i, (float)(xPos + 1) + i, (float)(yPos + 1) + i, (float)(zPos + 1) + i))) {
-            if (playerentity.containerMenu instanceof ChestContainer) {
-                IInventory iinventory = ((ChestContainer)playerentity.containerMenu).getContainer();
-                if (iinventory == tile || iinventory instanceof DoubleSidedInventory && ((DoubleSidedInventory)iinventory).contains(tile)) {
+            if (playerentity.containerMenu instanceof CrateContainer) {
+                IInventory iinventory = ((CrateContainer)playerentity.containerMenu).getContainer();
+                if (iinventory == tile || iinventory instanceof MultiSidedInventory && ((MultiSidedInventory)iinventory).contains(tile)) {
                     ++ticker;
                 }
             }
@@ -86,10 +94,17 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
 
     private void playSound(SoundEvent soundEvent) {
         CrateType crateType = this.getBlockState().getValue(CrateBlock.TYPE);
-        double d0 = (double)this.worldPosition.getX() + 0.5D;
-        double d1 = (double)this.worldPosition.getY() + 0.5D;
-        double d2 = (double)this.worldPosition.getZ() + 0.5D;
-        this.level.playSound(null, d0, d1, d2, soundEvent, SoundCategory.BLOCKS, 0.5F, (this.level.random.nextFloat() * 0.1F + 0.9F) * (1.05F - 0.05F * (float) crateType.getCrateSize()));
+        if (Arrays.stream(CrateBlock.CRATE_TYPE_START_POINTS).anyMatch(i -> i == crateType.ordinal())) {
+            List<Direction> directions = CrateBlock.getAttachDirectionsFromType(crateType);
+            int[] integers = new int[]{0, 0, 0};
+            for (Direction dir : directions) {
+                integers[dir.getAxis().ordinal()] = dir.getStepX() + dir.getStepY() + dir.getStepZ();
+            }
+            double d0 = (double)this.worldPosition.getX() + 0.5D + ((float)integers[0] / 2);
+            double d1 = (double)this.worldPosition.getY() + 0.5D + ((float)integers[1] / 2);
+            double d2 = (double)this.worldPosition.getZ() + 0.5D + ((float)integers[2] / 2);
+            this.level.playSound(null, d0, d1, d2, soundEvent, SoundCategory.BLOCKS, 0.5F, (this.level.random.nextFloat() * 0.1F + 0.9F) * (1.05F - 0.05F * (float) crateType.getCrateSize()));
+        }
     }
 
     @Override
@@ -130,6 +145,24 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
 
     }
 
+    public void load(BlockState state, CompoundNBT nbt) {
+        super.load(state, nbt);
+        this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
+        if (!this.tryLoadLootTable(nbt)) {
+            ItemStackHelper.loadAllItems(nbt, this.items);
+        }
+
+    }
+
+    public CompoundNBT save(CompoundNBT nbt) {
+        super.save(nbt);
+        if (!this.trySaveLootTable(nbt)) {
+            ItemStackHelper.saveAllItems(nbt, this.items);
+        }
+
+        return nbt;
+    }
+
     @Override
     protected NonNullList<ItemStack> getItems() {
         return this.items;
@@ -160,7 +193,7 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
 
     @Override
     protected Container createMenu(int containerCounter, PlayerInventory playerInventory) {
-        return ChestContainer.threeRows(containerCounter, playerInventory, this);
+        return CrateContainer.singleCrate(containerCounter, playerInventory, this);
     }
 
     @Override
@@ -176,6 +209,19 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     @Override
     public <T> LazyOptional<T> getCapability(Capability<T> cap, Direction side) {
         if (!this.remove && cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
+
+
+            if (this.level == null) {
+                return LazyOptional.empty().cast();
+            }
+
+            List<BlockPos> cratePositions = CrateBlock.getCratePosList(this.level, this.worldPosition);
+            if (this.crateArray == null) {
+                this.crateArray = cratePositions;
+            } else if (this.crateArray != cratePositions) {
+                this.crateArray = cratePositions;
+            }
+
             if (this.crateHandler == null)
                 this.crateHandler = LazyOptional.of(this::createHandler);
             return this.crateHandler.cast();
@@ -183,14 +229,36 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
         return super.getCapability(cap, side);
     }
 
+    @Nonnull
     private net.minecraftforge.items.IItemHandlerModifiable createHandler() {
         BlockState state = this.getBlockState();
-        if (!(state.getBlock() instanceof ChestBlock)) {
+        if (!(state.getBlock() instanceof CrateBlock)) {
             return new InvWrapper(this);
         }
-        IInventory inv = ChestBlock.getContainer((ChestBlock) state.getBlock(), state, getLevel(), getBlockPos(), true);
-        return new net.minecraftforge.items.wrapper.InvWrapper(inv == null ? this : inv);
+        CrateTileEntity[] tileList = new CrateTileEntity[crateArray.size()];
+        if (this.level != null) {
+            for (int i = 0; i < crateArray.size(); i++) {
+                tileList[i] = (CrateTileEntity) this.level.getBlockEntity(crateArray.get(i));
+            }
+        }
+        IInventory inv = new MultiSidedInventory(tileList); //ChestBlock.getContainer((ChestBlock) state.getBlock(), state, getLevel(), getBlockPos(), true);
+        return new InvWrapper(inv);
     }
+
+/*    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, Direction side) {
+        if (!this.remove && cap == net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
+            if (this.crateHandler == null)
+                this.crateHandler = net.minecraftforge.common.util.LazyOptional.of(this::createHandler);
+            return this.crateHandler.cast();
+        }
+        return super.getCapability(cap, side);
+    }
+
+    @Nonnull
+    private net.minecraftforge.items.IItemHandlerModifiable createHandler() {
+        return new net.minecraftforge.items.wrapper.InvWrapper(this);
+    }*/
 
     @Override
     protected void invalidateCaps() {
@@ -199,9 +267,18 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
             crateHandler.invalidate();
     }
 
+    public List<BlockPos> getCrateArray() {
+        return this.crateArray;
+    }
+
+    @Override
+    public boolean stillValid(PlayerEntity player) {
+        return this.level != null && (!(this.level.getBlockState(this.worldPosition).getBlock() instanceof CrateBlock) || CrateBlock.isCrateConfigValid(this.level, CrateBlock.getCratePosList(this.level, this.worldPosition))) && super.stillValid(player);
+    }
+
     @Override
     protected ITextComponent getDefaultName() {
-        return new TranslationTextComponent("container.chest");
+        return new TranslationTextComponent("container.druidcraftrg.crate");
     }
 
     @Override

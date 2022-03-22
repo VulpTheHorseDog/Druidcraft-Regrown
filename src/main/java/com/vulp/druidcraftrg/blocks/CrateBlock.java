@@ -3,24 +3,37 @@ package com.vulp.druidcraftrg.blocks;
 import com.vulp.druidcraftrg.DruidcraftRegrown;
 import com.vulp.druidcraftrg.blocks.tile.CrateTileEntity;
 import com.vulp.druidcraftrg.init.BlockInit;
+import com.vulp.druidcraftrg.inventory.MultiSidedInventory;
+import com.vulp.druidcraftrg.inventory.container.CrateContainer;
 import com.vulp.druidcraftrg.state.properties.CrateType;
 import net.minecraft.block.*;
 import net.minecraft.entity.monster.piglin.PiglinTasks;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.inventory.DoubleSidedInventory;
+import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.InventoryHelper;
+import net.minecraft.inventory.container.ChestContainer;
+import net.minecraft.inventory.container.Container;
 import net.minecraft.inventory.container.INamedContainerProvider;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.EnumProperty;
 import net.minecraft.state.StateContainer;
+import net.minecraft.tileentity.ChestTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.tileentity.TileEntityMerger;
 import net.minecraft.util.ActionResultType;
 import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
@@ -28,6 +41,70 @@ public class CrateBlock extends ContainerBlock {
 
     public static final EnumProperty<CrateType> TYPE = EnumProperty.create("type", CrateType.class);
     public static final int[] CRATE_TYPE_START_POINTS = new int[]{0, 8, 12, 16, 20, 22, 24, 26};
+
+    /*private static final TileEntityMerger.ICallback<CrateTileEntity, Optional<IInventory>> CRATE_COMBINER = new TileEntityMerger.ICallback<CrateTileEntity, Optional<IInventory>>() {
+        @Nonnull
+        public Optional<IInventory> acceptQuad(@Nonnull CrateTileEntity tile1, @Nonnull CrateTileEntity tile2) {
+            return Optional.of(new MultiSidedInventory(tile1, tile2));
+        }
+
+        @Nonnull
+        public Optional<IInventory> acceptDouble(@Nonnull CrateTileEntity tile1, @Nonnull CrateTileEntity tile2) {
+            return Optional.of(new MultiSidedInventory(tile1, tile2));
+        }
+
+        @Nonnull
+        public Optional<IInventory> acceptSingle(@Nonnull CrateTileEntity tile) {
+            return Optional.of(tile);
+        }
+
+        @Nonnull
+        public Optional<IInventory> acceptNone() {
+            return Optional.empty();
+        }
+    };
+
+    private static final TileEntityMerger.ICallback<CrateTileEntity, Optional<INamedContainerProvider>> MENU_PROVIDER_COMBINER = new TileEntityMerger.ICallback<CrateTileEntity, Optional<INamedContainerProvider>>() {
+
+        @Nonnull
+        public Optional<INamedContainerProvider> acceptDouble(@Nonnull final CrateTileEntity tile1, @Nonnull final CrateTileEntity tile2) {
+
+            final IInventory iinventory = new MultiSidedInventory(tile1, tile2);
+            return Optional.of(new INamedContainerProvider() {
+
+                @Nullable
+                public Container createMenu(int id, @Nonnull PlayerInventory playerInventory, @Nonnull PlayerEntity player) {
+                    if (tile1.canOpen(player) && tile2.canOpen(player)) {
+                        tile1.unpackLootTable(playerInventory.player);
+                        tile2.unpackLootTable(playerInventory.player);
+                        return new CrateContainer(id, playerInventory, iinventory, tile2);
+                    } else {
+                        return null;
+                    }
+                }
+
+                @Nonnull
+                public ITextComponent getDisplayName() {
+                    if (tile1.hasCustomName()) {
+                        return tile1.getDisplayName();
+                    } else {
+                        return tile2.hasCustomName() ? tile2.getDisplayName() : new TranslationTextComponent("container.chestDouble");
+                    }
+                }
+
+            });
+        }
+
+        @Nonnull
+        public Optional<INamedContainerProvider> acceptSingle(@Nonnull CrateTileEntity tile) {
+            return Optional.of(tile);
+        }
+
+        @Nonnull
+        public Optional<INamedContainerProvider> acceptNone() {
+            return Optional.empty();
+        }
+    };*/
 
     public CrateBlock(Properties properties) {
         super(properties);
@@ -46,13 +123,109 @@ public class CrateBlock extends ContainerBlock {
         } else {
             INamedContainerProvider inamedcontainerprovider = this.getMenuProvider(state, world, pos);
             if (inamedcontainerprovider != null) {
-                player.openMenu(inamedcontainerprovider);
+                player.openMenu(new INamedContainerProvider() {
+
+                    @Nullable
+                    private List<CrateTileEntity> findTileList() {
+                        List<CrateTileEntity> tileList = new ArrayList<>(Collections.emptyList());
+                        TileEntity tile = world.getBlockEntity(pos);
+                        if (tile instanceof CrateTileEntity) {
+                            List<BlockPos> array = ((CrateTileEntity) tile).getCrateArray();
+                            if (array == null) {
+                                array = CrateBlock.getCratePosList(world, pos);
+                            }
+                            for (BlockPos tempPos : array) {
+                                TileEntity tempTile = world.getBlockEntity(tempPos);
+                                if (tempTile instanceof CrateTileEntity)
+                                tileList.add((CrateTileEntity) tempTile);
+                            }
+                        }
+                        if (tileList.isEmpty()) {
+                            return null;
+                        } else return tileList;
+                    }
+
+                    @Override
+                    public ITextComponent getDisplayName() {
+                        List<CrateTileEntity> tileList = findTileList();
+                        if (tileList != null) {
+                            for (CrateTileEntity crateTileEntity : tileList) {
+                                if (crateTileEntity.hasCustomName()) {
+                                    return crateTileEntity.getDisplayName();
+                                }
+                            }
+                        }
+                        return new TranslationTextComponent("container.druidcraftrg.crate");
+                    }
+
+                    @Nullable
+                    @Override
+                    public Container createMenu(int id, PlayerInventory playerInventory, PlayerEntity player) {
+
+                        List<CrateTileEntity> tileList = findTileList();
+                        if (tileList != null) {
+                            for (int i = 0; i < 2; i++) {
+                                for (CrateTileEntity crateTileEntity : tileList) {
+                                    if (i == 0 && !crateTileEntity.canOpen(player)) {
+                                        return null;
+                                    } else {
+                                        crateTileEntity.unpackLootTable(playerInventory.player);
+                                    }
+                                }
+                            }
+                            return getSizedContainer(state, id, playerInventory, new MultiSidedInventory(tileList.toArray(new CrateTileEntity[0])));
+                        }
+                        return null;
+                    }
+                });
+
                 // player.awardStat(this.getOpenChestStat());
                 PiglinTasks.angerNearbyPiglins(player, true);
             }
 
             return ActionResultType.CONSUME;
         }
+    }
+
+    public static CrateContainer getSizedContainer(BlockState state, int id, PlayerInventory playerInventory, IInventory inventory) {
+        switch (state.getValue(CrateBlock.TYPE).getCrateSize()) {
+            case 2:
+                return CrateContainer.doubleCrate(id, playerInventory, inventory);
+            case 4:
+                return CrateContainer.quadCrate(id, playerInventory, inventory);
+            case 8:
+                return CrateContainer.octoCrate(id, playerInventory, inventory);
+            default:
+                return CrateContainer.singleCrate(id, playerInventory, inventory);
+        }
+    }
+
+    public static List<BlockPos> getCratePosList(World world, BlockPos pos) {
+        List<Direction> directions = getAttachDirectionsFromType(world.getBlockState(pos).getValue(TYPE));
+        int[] integers = new int[]{0, 0, 0};
+        for (Direction dir : directions) {
+            integers[dir.getAxis().ordinal()] = dir.getStepX() + dir.getStepY() + dir.getStepZ();
+        }
+        List<BlockPos> posList = new ArrayList<>(Collections.emptyList());
+        for (int y = integers[1] == -1 ? -1 : 0; y < (integers[1] == 1 ? 2 : 1); y++) {
+            for (int x = integers[0] == -1 ? -1 : 0; x < (integers[0] == 1 ? 2 : 1); x++) {
+                for (int z = integers[2] == -1 ? -1 : 0; z < (integers[2] == 1 ? 2 : 1); z++) {
+                    posList.add(pos.offset(x, y, z));
+                }
+            }
+        }
+        return posList;
+    }
+
+    public static boolean isCrateConfigValid(World world, List<BlockPos> cratePositions) {
+        for (BlockPos currentPos : cratePositions) {
+            for (Direction dir : getAttachDirectionsFromType(world.getBlockState(currentPos).getValue(TYPE))) {
+                if (!getAttachDirectionsFromType(world.getBlockState(currentPos.relative(dir)).getValue(TYPE)).contains(dir.getOpposite())) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private boolean[] createCrateArray(IWorld world, BlockPos pos) {
@@ -191,11 +364,16 @@ public class CrateBlock extends ContainerBlock {
                     world.setBlock(blockPos, currentState.setValue(TYPE, detectCrateConfig(world, blockPos, crateTypeToCrateArray(world, blockPos, currentState.getValue(TYPE)), true)), 2); // Try setting to false sometime?
                 }
             });
+            TileEntity tileentity = world.getBlockEntity(pos);
+            if (tileentity instanceof IInventory) {
+                InventoryHelper.dropContents(world, pos, (IInventory)tileentity);
+                world.updateNeighbourForOutputSignal(pos, this); // Fix this?
+            }
         }
         super.onRemove(state, world, pos, replacingState, bool);
     }
 
-    private List<Direction> getAttachDirectionsFromType(CrateType type) {
+    public static List<Direction> getAttachDirectionsFromType(CrateType type) {
         List<Direction> directions = new LinkedList<>(Arrays.asList(type.getOpenDirections()));
         List<Direction> oppositeCache = new ArrayList<>(Collections.emptyList());
         directions.removeIf(direction -> {
