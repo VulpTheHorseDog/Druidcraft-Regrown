@@ -245,9 +245,6 @@ public class CrateBlock extends ContainerBlock {
 
     // up/down = increments of 9, east/west = increments of 3.
     private CrateType detectCrateConfig(IWorld world, BlockPos pos, boolean[] boolArray, boolean updateConfig) {
-        int x_increment = 3;
-        int y_increment = 9;
-        int centre = 13;
         int ticker = 0;
 
         for (int m = 0; m < 7; m++) {
@@ -294,10 +291,8 @@ public class CrateBlock extends ContainerBlock {
                         }
                         if (latch) {
                             CrateType placeType = CrateType.values()[ticker];
-                            DruidcraftRegrown.LOGGER.debug("Crate attempted. [" + ticker + "]");
                             HashMap<BlockPos, CrateType> map = checkConfigValid(world, pos, placeType, ticker);
                             if (map != null) {
-                                DruidcraftRegrown.LOGGER.debug("CRATE DETECTED! [" + ticker + "]");
                                 if (updateConfig) {
                                     map.forEach((blockPos, crateType) -> world.setBlock(blockPos, BlockInit.crate.defaultBlockState().setValue(TYPE, crateType), 2));
                                 }
@@ -315,7 +310,6 @@ public class CrateBlock extends ContainerBlock {
     private boolean[] crateTypeToCrateArray(IWorld world, BlockPos pos, CrateType type) {
         List<Direction> directions = getAttachDirectionsFromType(type);
         boolean[] array = createCrateArray(world, pos);
-        debugArrayCreation(array);
         boolean[] arrayMask = new boolean[27];
         int[] integers = new int[]{0, 0, 0};
         for (Direction dir : directions) {
@@ -333,8 +327,6 @@ public class CrateBlock extends ContainerBlock {
                 array[i] = false;
             }
         }
-        if (!world.isClientSide())
-            debugArrayCreation(array);
         return array;
     }
 
@@ -367,7 +359,6 @@ public class CrateBlock extends ContainerBlock {
             TileEntity tileentity = world.getBlockEntity(pos);
             if (tileentity instanceof IInventory) {
                 InventoryHelper.dropContents(world, pos, (IInventory)tileentity);
-                world.updateNeighbourForOutputSignal(pos, this); // Fix this?
             }
         }
         super.onRemove(state, world, pos, replacingState, bool);
@@ -411,11 +402,7 @@ public class CrateBlock extends ContainerBlock {
                     // Dynamic is the various blocks it checks against.
                     BlockPos dynamicPos = new BlockPos(xPos, yPos, zPos);
                     if (dynamicPos.getX() != pos.getX() || dynamicPos.getY() != pos.getY() || dynamicPos.getZ() != pos.getZ()) {  // The last block placed will not turn here, as it is placed after the fact.
-                        /*if (!world.isClientSide)
-                            DruidcraftRegrown.LOGGER.debug(dynamicPos);*/
                         CrateType crateTypeReference = CrateType.values()[ticker]; // Acts as the template that the block needs to fill.
-                        /*if (!world.isClientSide)
-                            DruidcraftRegrown.LOGGER.debug(dynamicCrateType.getSerializedName());*/
                         for (Direction dir : getAttachDirectionsFromType(crateTypeReference)) {
                             BlockState dynamicState = world.getBlockState(dynamicPos);
                             CrateType dynamicType = dynamicState.getValue(TYPE);
@@ -470,20 +457,39 @@ public class CrateBlock extends ContainerBlock {
             CrateType type = CrateType.SMALL;
             if (context.canPlace()) {
                 boolean[] boolArray = createCrateArray(world, pos);
-            /*if (!world.isClientSide) {
-                debugArrayCreation(boolArray);
-            }*/
                 type = detectCrateConfig(world, pos, boolArray, true);
             }
             return state.setValue(TYPE, type);
         } else return null;
     }
 
-    // Triggers when setBlock() happens! Is a problem.
     @Override
     public void onPlace(BlockState state, World world, BlockPos pos, BlockState state1, boolean bool) {
         // detectCrateConfig(world, pos, createCrateArray(world, pos), true);
         super.onPlace(state, world, pos, state1, bool);
+    }
+
+    public boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
+    }
+
+    public int getAnalogOutputSignal(BlockState state, World world, BlockPos pos) {
+
+        List<CrateTileEntity> tileList = new ArrayList<>(Collections.emptyList());
+        TileEntity tile = world.getBlockEntity(pos);
+        if (tile instanceof CrateTileEntity) {
+            List<BlockPos> array = ((CrateTileEntity) tile).getCrateArray();
+            if (array == null) {
+                array = CrateBlock.getCratePosList(world, pos);
+            }
+            for (BlockPos tempPos : array) {
+                TileEntity tempTile = world.getBlockEntity(tempPos);
+                if (tempTile instanceof CrateTileEntity)
+                    tileList.add((CrateTileEntity) tempTile);
+            }
+        }
+
+        return !tileList.isEmpty() ? Container.getRedstoneSignalFromContainer(new MultiSidedInventory(tileList.toArray(new CrateTileEntity[0]))) : 0;
     }
 
     @Override

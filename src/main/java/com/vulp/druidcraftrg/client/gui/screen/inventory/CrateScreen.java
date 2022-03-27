@@ -203,8 +203,8 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                 // Highlight, but only if not searching OR search result is correct.
                 boolean flag2 = this.searchBox.getValue().isEmpty();
                 if (this.isHovering(slot, (double) mouseX, (double) mouseY) && slot.isActive()) {
-                    boolean flag1 = this.searchList.contains(this.hoveredSlot);
                     this.hoveredSlot = slot;
+                    boolean flag1 = this.searchList.contains(this.hoveredSlot);
                     if (flag2 || flag1) {
                         int k1 = slotY - scroll - 219;
                         if (k1 > 1 && k1 < 123 && mouseInBounds) {
@@ -217,9 +217,8 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                 // Grey the wrong results.
                 if (!flag2) {
                     if (!this.searchList.contains(slot)) {
-                        RenderSystem.disableDepthTest();
                         int k1 = slotY - scroll - 220;
-                        if (k1 > 1 && k1 < 123) {
+                        if (k1 > 0 && k1 < 123) {
                             int j1 = slot.x - 1;
                             this.fillGradient(matrixStack, j1, MathHelper.clamp(k1, 18, 124), j1 + 18, MathHelper.clamp(k1 + 18, 18, 124), -1072689136, -1072689136);
                         }
@@ -234,8 +233,6 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             }
 
         }
-
-        renderSearchHighlights(matrixStack, delta, mouseX, mouseY);
 
         RenderSystem.popMatrix();
         RenderSystem.enableDepthTest();
@@ -256,11 +253,34 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
         RenderSystem.enableRescaleNormal();
         RenderSystem.glMultiTexCoord2f(33986, 240.0F, 240.0F);
 
+        renderSearchHighlights(matrixStack, delta, mouseX, mouseY);
 
+        this.setBlitOffset(100);
+        this.itemRenderer.blitOffset = 100.0F;
+        for (Slot slot : this.searchList) {
+            ItemStack slotItem = slot.getItem();
+            int stackSize = Math.min(slotItem.getMaxStackSize(), slot.getMaxStackSize(slotItem));
+            String s = null;
+            if (slotItem.getCount() > stackSize) {
+                s = TextFormatting.YELLOW.toString() + stackSize;
+                slotItem.setCount(stackSize);
+            }
+            int slotPos = slot.y - (int) ((float) this.scrollOffset * (((float) this.containerRows - 6.0F) / 6.0F)) - 220;
+            if (slotPos > 1 && slotPos < 123) {
+                this.itemRenderer.renderGuiItemDecorations(this.font, slotItem, slot.x, slotPos + 1, s);
+            }
+        }
 
         // TODO: Labels need sorted! Dragged items also need done.
+
+        this.setBlitOffset(250);
+        this.itemRenderer.blitOffset = 250.0F;
         renderForeground(matrixStack, delta, mouseX, mouseY);
+        this.setBlitOffset(0);
+        this.itemRenderer.blitOffset = 0.0F;
         this.renderLabels(matrixStack, mouseX, mouseY);
+
+
 
         for (int i1 = 0; i1 < playerInventorySlots.size(); i1++) {
             Slot slot = this.menu.slots.get(i1 + ticker);
@@ -320,7 +340,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     }
 
     protected void renderLabels(MatrixStack matrixStack, int p_230451_2_, int p_230451_3_) {
-        matrixStack.translate(0.0D, 0.0D, 350.0D);
+        matrixStack.translate(0.0D, 0.0D, 250.0D);
         this.font.draw(matrixStack, this.title, (float)this.titleLabelX, (float)this.titleLabelY, 4210752);
         this.font.draw(matrixStack, this.inventory.getDisplayName(), (float)this.inventoryLabelX, (float)this.inventoryLabelY, 4210752);
         matrixStack.translate(0.0D, 0.0D, 0.0D);
@@ -534,7 +554,6 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                     flag1 = true;
                 }
             }
-
             if (!flag1) {
                 if (flag) {
                     fill(matrixStack, i, j, i + 16, j + 16, -2130706433);
@@ -648,7 +667,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                     if (ySize != 20) {
                         this.blit(matrixStack, i + 7 + x * 18 - 1, j + 19 - 1, 194, 38 - yPos - 1, 20, yPos + 1);
                     } else {
-                        this.blit(matrixStack, i + 7 + x * 18 - 1, yPos - 1, 194, 38 - ySize, 20, ySize);
+                        this.blit(matrixStack, i + 7 + x * 18 - 1, yPos - (yPos == 0 ? 0 : 1), 194, yPos == 0 ? 19 : 18, 20, yPos == 0 ? 19 : 20);
                     }
                 }
             }
@@ -662,9 +681,9 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
         this.blit(matrixStack, 168, 18, 168, 18, 26, 106);
         this.blit(matrixStack, 0, 124, 0, 124, 194, 97);
         this.blit(matrixStack, 174, 18 + (int)(180.0F * ((float)this.scrollOffset / (float)this.scrollOffsetMax)), this.canScroll ? 0 : 12, 221, 12, 15);
-        matrixStack.translate(0.0D, 0.0D, 350.0D);
+        matrixStack.translate(0.0D, 0.0D, 300.0D);
         this.searchBox.render(matrixStack, mouseX, mouseY, delta);
-        matrixStack.translate(0.0D, 0.0D, 0.0D);
+        matrixStack.translate(0.0D, 0.0D, -200.0D);
     }
 
     protected void renderBg(MatrixStack matrixStack, float delta, int mouseX, int mouseY) {
