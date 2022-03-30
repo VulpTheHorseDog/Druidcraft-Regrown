@@ -1,6 +1,6 @@
 package com.vulp.druidcraftrg.init;
 
-import net.minecraft.block.Block;
+import net.minecraft.world.level.block.Block;
 
 public class BlockInit {
 

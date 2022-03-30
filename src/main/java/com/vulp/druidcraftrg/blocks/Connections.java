@@ -1,8 +1,8 @@
 package com.vulp.druidcraftrg.blocks;
 
-import net.minecraft.util.IStringSerializable;
+import net.minecraft.util.StringRepresentable;
 
-public enum Connections implements IStringSerializable {
+public enum Connections implements StringRepresentable {
 
     NONE("none"),
     NORMAL("normal"),

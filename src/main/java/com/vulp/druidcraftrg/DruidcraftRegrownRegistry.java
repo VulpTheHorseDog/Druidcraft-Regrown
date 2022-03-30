@@ -4,29 +4,28 @@ import com.vulp.druidcraftrg.blocks.*;
 import com.vulp.druidcraftrg.blocks.tile.BeamTileEntity;
 import com.vulp.druidcraftrg.blocks.tile.CrateTileEntity;
 import com.vulp.druidcraftrg.blocks.tile.RopeTileEntity;
-import com.vulp.druidcraftrg.capabilities.ITempSpawn;
-import com.vulp.druidcraftrg.capabilities.TempSpawn;
-import com.vulp.druidcraftrg.capabilities.TempSpawnStorage;
+import com.vulp.druidcraftrg.capabilities.TempSpawnCapability;
 import com.vulp.druidcraftrg.client.renderer.SetupRenderers;
+import com.vulp.druidcraftrg.init.BlockEntityInit;
 import com.vulp.druidcraftrg.init.BlockInit;
 import com.vulp.druidcraftrg.init.ContainerInit;
 import com.vulp.druidcraftrg.init.ItemInit;
-import com.vulp.druidcraftrg.init.TileInit;
 import com.vulp.druidcraftrg.items.DebugWandItem;
 import com.vulp.druidcraftrg.items.DoubleCropSeedItem;
 import com.vulp.druidcraftrg.items.KnifeItem;
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.inventory.container.ContainerType;
-import net.minecraft.item.*;
-import net.minecraft.tileentity.TileEntityType;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.*;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.Material;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.event.TextureStitchEvent;
-import net.minecraftforge.common.capabilities.CapabilityManager;
+import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -34,7 +33,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(bus=Mod.EventBusSubscriber.Bus.MOD)
 public class DruidcraftRegrownRegistry {
 
-    public static final ItemGroup DC_TAB = new ItemGroup("druidcraft") {
+    public static final CreativeModeTab DC_TAB = new CreativeModeTab("druidcraft") {
         @Override
         public ItemStack makeIcon() {
             return new ItemStack(ItemInit.hemp_seeds); // TEMPORARY
@@ -78,24 +77,32 @@ public class DruidcraftRegrownRegistry {
     @SubscribeEvent
     public static void blockRegistryEvent(final RegistryEvent.Register<Block> event) {
         event.getRegistry().registerAll(
-                BlockInit.hemp_crop = new DoubleCropBlock(7.0D, AbstractBlock.Properties.of(Material.PLANT).sound(SoundType.CROP).noCollission().randomTicks().instabreak()).setRegistryName(location("hemp_crop")),
-                BlockInit.rope = new RopeBlock(2.5D, 2.5D, AbstractBlock.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(0.4F)).setRegistryName(location("rope")),
-                BlockInit.platform = new PlatformBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F).noOcclusion()).setRegistryName(location("platform")),
-                BlockInit.beam = new BeamBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("beam")),
-                BlockInit.bedroll = new BedrollBlock(DyeColor.RED, AbstractBlock.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(1.0F)).setRegistryName(location("bedroll")),
-                BlockInit.crate = new CrateBlock(AbstractBlock.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("crate"))
+                BlockInit.hemp_crop = new DoubleCropBlock(7.0D, BlockBehaviour.Properties.of(Material.PLANT).sound(SoundType.CROP).noCollission().randomTicks().instabreak()).setRegistryName(location("hemp_crop")),
+                BlockInit.rope = new RopeBlock(2.5D, 2.5D, BlockBehaviour.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(0.4F)).setRegistryName(location("rope")),
+                BlockInit.platform = new PlatformBlock(BlockBehaviour.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F).noOcclusion()).setRegistryName(location("platform")),
+                BlockInit.beam = new BeamBlock(BlockBehaviour.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("beam")),
+                BlockInit.bedroll = new BedrollBlock(DyeColor.RED, BlockBehaviour.Properties.of(Material.WOOL).sound(SoundType.WOOL).strength(1.0F)).setRegistryName(location("bedroll")),
+                BlockInit.crate = new CrateBlock(BlockBehaviour.Properties.of(Material.WOOD).sound(SoundType.WOOD).strength(1.0F)).setRegistryName(location("crate"))
         );
 
         DruidcraftRegrown.LOGGER.info("Blocks Registered!");
     }
 
+    // MODEL REGISTRATION!
+    @SubscribeEvent
+    @OnlyIn(Dist.CLIENT)
+    public static void modelRegistryEvent(ModelRegistryEvent event) {
+
+        DruidcraftRegrown.LOGGER.info("Models Registered!");
+    }
+
     // TILE REGISTRATION!
     @SubscribeEvent
-    public static void tileRegistryEvent(final RegistryEvent.Register<TileEntityType<?>> event) {
+    public static void tileRegistryEvent(final RegistryEvent.Register<BlockEntityType<?>> event) {
         event.getRegistry().registerAll(
-                TileInit.rope = TileInit.register("rope", TileEntityType.Builder.of(RopeTileEntity::new, BlockInit.rope)),
-                TileInit.beam = TileInit.register("beam", TileEntityType.Builder.of(BeamTileEntity::new, BlockInit.beam)),
-                TileInit.crate = TileInit.register("crate", TileEntityType.Builder.of(CrateTileEntity::new, BlockInit.crate))
+                BlockEntityInit.rope = BlockEntityInit.register("rope", BlockEntityType.Builder.of(RopeTileEntity::new, BlockInit.rope)),
+                BlockEntityInit.beam = BlockEntityInit.register("beam", BlockEntityType.Builder.of(BeamTileEntity::new, BlockInit.beam)),
+                BlockEntityInit.crate = BlockEntityInit.register("crate", BlockEntityType.Builder.of(CrateTileEntity::new, BlockInit.crate))
         );
 
         DruidcraftRegrown.LOGGER.info("Tile Entities Registered!");
@@ -103,7 +110,7 @@ public class DruidcraftRegrownRegistry {
 
     // CONTAINER REGISTRATION!
     @SubscribeEvent
-    public static void containerRegistryEvent(final RegistryEvent.Register<ContainerType<?>> event) {
+    public static void containerRegistryEvent(final RegistryEvent.Register<MenuType<?>> event) {
         event.getRegistry().registerAll(
                 ContainerInit.CRATE_9x3.setRegistryName(DruidcraftRegrown.MODID, "crate_9x3"),
                 ContainerInit.CRATE_9x6.setRegistryName(DruidcraftRegrown.MODID, "crate_9x6"),
@@ -115,10 +122,12 @@ public class DruidcraftRegrownRegistry {
     }
 
     // CAPABILITY REGISTRATION!
-    public static void registerCapabilities() {
-        CapabilityManager.INSTANCE.register(ITempSpawn.class, new TempSpawnStorage(), TempSpawn::new);
+    @SubscribeEvent
+    public static void capabilityRegistryEvent(RegisterCapabilitiesEvent event) {
+        event.register(TempSpawnCapability.class);
         DruidcraftRegrown.LOGGER.info("Capabilities Registered!");
     }
+
 
     // TEXTURE STITCHING!
     @SubscribeEvent

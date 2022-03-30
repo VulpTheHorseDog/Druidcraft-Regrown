@@ -1,35 +1,26 @@
 package com.vulp.druidcraftrg.mixins;
 
 import com.vulp.druidcraftrg.blocks.BedrollBlock;
-import com.vulp.druidcraftrg.capabilities.ITempSpawn;
 import com.vulp.druidcraftrg.capabilities.SpawnDataHolder;
+import com.vulp.druidcraftrg.capabilities.TempSpawnCapability;
 import com.vulp.druidcraftrg.capabilities.TempSpawnProvider;
-import com.vulp.druidcraftrg.capabilities.TempSpawnStorage;
-import net.minecraft.block.BedBlock;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.network.play.server.*;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.management.DemoPlayerInteractionManager;
-import net.minecraft.server.management.PlayerInteractionManager;
-import net.minecraft.server.management.PlayerList;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.RegistryKey;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvents;
-import net.minecraft.util.Util;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.World;
-import net.minecraft.world.biome.BiomeManager;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraft.world.storage.IWorldInfo;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.LevelData;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -37,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import javax.annotation.Nullable;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,103 +38,93 @@ public abstract class PlayerListMixin {
 
     @Shadow @Final private MinecraftServer server;
 
-    @Shadow public abstract boolean removePlayer(ServerPlayerEntity player);
+    @Shadow public abstract void sendLevelInfo(ServerPlayer p_72354_1_, ServerLevel p_72354_2_);
 
-    @Shadow protected abstract void updatePlayerGameMode(ServerPlayerEntity p_72381_1_, @Nullable ServerPlayerEntity p_72381_2_, ServerWorld p_72381_3_);
+    @Shadow public abstract void sendPlayerPermissionLevel(ServerPlayer p_187243_1_);
 
-    @Shadow public abstract void sendLevelInfo(ServerPlayerEntity p_72354_1_, ServerWorld p_72354_2_);
+    @Shadow @Final private Map<UUID, ServerPlayer> playersByUUID;
 
-    @Shadow public abstract void sendPlayerPermissionLevel(ServerPlayerEntity p_187243_1_);
+    @Shadow @Final private List<ServerPlayer> players;
 
-    @Shadow public abstract boolean addPlayer(ServerPlayerEntity player);
-
-    @Shadow @Final private Map<UUID, ServerPlayerEntity> playersByUUID;
+    @Shadow public abstract boolean addPlayer(ServerPlayer player);
 
     @Inject(at = @At("HEAD"), method = "respawn", cancellable = true)
-    private void respawn(ServerPlayerEntity player, boolean bool, CallbackInfoReturnable<ServerPlayerEntity> cir) {
-        Optional<ITempSpawn> spawnData = player.getCapability(TempSpawnProvider.TEMP_SPAWN).resolve();
+    private void respawn(ServerPlayer player, boolean bool, CallbackInfoReturnable<ServerPlayer> cir) {
+        Optional<TempSpawnCapability> spawnData = player.getCapability(TempSpawnProvider.TEMP_SPAWN_CAPABILITY).resolve();
         // For some reason the second time you try and respawn, the below if statement is not passed. Because the capability returns null. Likely because of the janky capability handling in the first place.
         if (spawnData.isPresent() && spawnData.get().hasSpawnData()) {
             SpawnDataHolder holder = spawnData.get().getSpawnData();
-            ServerWorld serverworld = this.server.getLevel(holder.getDimension());
-            if (holder.getPos() != null && serverworld.getBlockState(holder.getPos()).getBlock() instanceof BedrollBlock) {
-                ServerWorld tempWorld = this.server.getLevel(player.getRespawnDimension());
-                BlockPos mainBedPos = player.getRespawnPosition();
-                float mainBedAngle = player.getRespawnAngle();
-                boolean mainBedForce = player.isRespawnForced();
-                Optional<Vector3d> opt;
-                // Below probably actially respawns the player. Make sure that doesnt happen and it just detects if block is there.
-                if (tempWorld != null && mainBedPos != null) {
-                    opt = PlayerEntity.findRespawnPositionAndUseSpawnBlock(serverworld, mainBedPos, mainBedAngle, mainBedForce, bool);
-                } else {
-                    opt = Optional.empty();
-                }
-                ServerWorld mainBedWorld = tempWorld != null && opt.isPresent() ? tempWorld : this.server.overworld();
-                this.removePlayer(player);
-                player.getLevel().removePlayer(player, true); // Forge: keep data until copyFrom called
-                BlockPos pos = holder.getPos();
+            ServerLevel ServerLevel = this.server.getLevel(holder.getDimension());
+            if (holder.getPos() != null && ServerLevel.getBlockState(holder.getPos()).getBlock() instanceof BedrollBlock) {
+                this.players.remove(player);
+                player.getLevel().removePlayerImmediately(player, Entity.RemovalReason.DISCARDED);
                 float angle = holder.getAngle();
-                boolean forceRespawn = holder.isForced();
-                Optional<Vector3d> optional;
-                if (pos != null) {
-                    optional = BedBlock.findStandUpPosition(EntityType.PLAYER, serverworld, pos, angle);
+                BlockPos pos = holder.getPos();
+                boolean flag = player.isRespawnForced();
+                ServerLevel serverlevel = this.server.getLevel(player.getRespawnDimension());
+                Optional<Vec3> optional;
+                if (serverlevel != null && pos != null) {
+                    optional = Player.findRespawnPositionAndUseSpawnBlock(serverlevel, pos, angle, flag, bool);
                 } else {
                     optional = Optional.empty();
                 }
 
-                ServerWorld serverworld1 = optional.isPresent() ? serverworld : this.server.overworld();
-                PlayerInteractionManager playerinteractionmanager;
-                if (this.server.isDemo()) {
-                    playerinteractionmanager = new DemoPlayerInteractionManager(serverworld1);
-                } else {
-                    playerinteractionmanager = new PlayerInteractionManager(serverworld1);
-                }
-
-                ServerPlayerEntity serverplayerentity = new ServerPlayerEntity(this.server, serverworld1, player.getGameProfile(), playerinteractionmanager);
-                serverplayerentity.connection = player.connection;
-                serverplayerentity.restoreFrom(player, bool);
-                player.remove(false); // Forge: clone event had a chance to see old data, now discard it
-                serverplayerentity.setId(player.getId());
-                serverplayerentity.setMainArm(player.getMainArm());
+                ServerLevel serverlevel1 = serverlevel != null && optional.isPresent() ? serverlevel : this.server.overworld();
+                ServerPlayer serverplayer = new ServerPlayer(this.server, serverlevel1, player.getGameProfile());
+                serverplayer.connection = player.connection;
+                serverplayer.restoreFrom(player, bool);
+                serverplayer.setId(player.getId());
+                serverplayer.setMainArm(player.getMainArm());
 
                 for (String s : player.getTags()) {
-                    serverplayerentity.addTag(s);
+                    serverplayer.addTag(s);
                 }
 
-                this.updatePlayerGameMode(serverplayerentity, player, serverworld1);
+                boolean flag2 = false;
+                if (optional.isPresent()) {
+                    BlockState blockstate = serverlevel1.getBlockState(pos);
+                    boolean flag1 = blockstate.is(Blocks.RESPAWN_ANCHOR);
+                    Vec3 vec3 = optional.get();
+                    float f1;
+                    if (!blockstate.is(BlockTags.BEDS) && !flag1) {
+                        f1 = angle;
+                    } else {
+                        Vec3 vec31 = Vec3.atBottomCenterOf(pos).subtract(vec3).normalize();
+                        f1 = (float) Mth.wrapDegrees(Mth.atan2(vec31.z, vec31.x) * (double) (180F / (float) Math.PI) - 90.0D);
+                    }
 
-                boolean flag = optional.isPresent();
-                if (flag) {
-                    Vector3d vector3d = optional.get();
-                    Vector3d vector3d1 = Vector3d.atBottomCenterOf(pos).subtract(vector3d).normalize();
-                    float f1 = (float) MathHelper.wrapDegrees(MathHelper.atan2(vector3d1.z, vector3d1.x) * (double) (180F / (float) Math.PI) - 90.0D);
-                    serverplayerentity.moveTo(vector3d.x, vector3d.y, vector3d.z, f1, 0.0F);
-                    serverplayerentity.setRespawnPosition(mainBedWorld.dimension(), mainBedPos, mainBedAngle, mainBedForce, false);
-                    Optional<ITempSpawn> tempSpawnNew = serverplayerentity.getCapability(TempSpawnProvider.TEMP_SPAWN).resolve();
+                    serverplayer.moveTo(vec3.x, vec3.y, vec3.z, f1, 0.0F);
+                    serverplayer.setRespawnPosition(serverlevel1.dimension(), pos, angle, flag, false);
+                    flag2 = !bool && flag1;
+                    Optional<TempSpawnCapability> tempSpawnNew = serverplayer.getCapability(TempSpawnProvider.TEMP_SPAWN_CAPABILITY).resolve();
                     tempSpawnNew.ifPresent(iTempSpawn -> iTempSpawn.setSpawnData(holder));
                 } else if (pos != null) {
-                    serverplayerentity.connection.send(new SChangeGameStatePacket(SChangeGameStatePacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
+                    serverplayer.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
                 }
 
-                while (!serverworld1.noCollision(serverplayerentity) && serverplayerentity.getY() < 256.0D) {
-                    serverplayerentity.setPos(serverplayerentity.getX(), serverplayerentity.getY() + 1.0D, serverplayerentity.getZ());
+                while (!serverlevel1.noCollision(serverplayer) && serverplayer.getY() < (double) serverlevel1.getMaxBuildHeight()) {
+                    serverplayer.setPos(serverplayer.getX(), serverplayer.getY() + 1.0D, serverplayer.getZ());
                 }
 
-                IWorldInfo iworldinfo = serverplayerentity.level.getLevelData();
-                serverplayerentity.connection.send(new SRespawnPacket(serverplayerentity.level.dimensionType(), serverplayerentity.level.dimension(), BiomeManager.obfuscateSeed(serverplayerentity.getLevel().getSeed()), serverplayerentity.gameMode.getGameModeForPlayer(), serverplayerentity.gameMode.getPreviousGameModeForPlayer(), serverplayerentity.getLevel().isDebug(), serverplayerentity.getLevel().isFlat(), bool));
-                serverplayerentity.connection.teleport(serverplayerentity.getX(), serverplayerentity.getY(), serverplayerentity.getZ(), serverplayerentity.yRot, serverplayerentity.xRot);
-                serverplayerentity.connection.send(new SWorldSpawnChangedPacket(serverworld1.getSharedSpawnPos(), serverworld1.getSharedSpawnAngle()));
-                serverplayerentity.connection.send(new SServerDifficultyPacket(iworldinfo.getDifficulty(), iworldinfo.isDifficultyLocked()));
-                serverplayerentity.connection.send(new SSetExperiencePacket(serverplayerentity.experienceProgress, serverplayerentity.totalExperience, serverplayerentity.experienceLevel));
-                this.sendLevelInfo(serverplayerentity, serverworld1);
-                this.sendPlayerPermissionLevel(serverplayerentity);
-                serverworld1.addRespawnedPlayer(serverplayerentity);
-                this.addPlayer(serverplayerentity);
-                this.playersByUUID.put(serverplayerentity.getUUID(), serverplayerentity);
-                serverplayerentity.initMenu();
-                serverplayerentity.setHealth(serverplayerentity.getHealth());
-                net.minecraftforge.fml.hooks.BasicEventHooks.firePlayerRespawnEvent(serverplayerentity, bool);
-                cir.setReturnValue(serverplayerentity);
+                LevelData leveldata = serverplayer.level.getLevelData();
+                serverplayer.connection.send(new ClientboundRespawnPacket(serverplayer.level.dimensionTypeRegistration(), serverplayer.level.dimension(), BiomeManager.obfuscateSeed(serverplayer.getLevel().getSeed()), serverplayer.gameMode.getGameModeForPlayer(), serverplayer.gameMode.getPreviousGameModeForPlayer(), serverplayer.getLevel().isDebug(), serverplayer.getLevel().isFlat(), bool));
+                serverplayer.connection.teleport(serverplayer.getX(), serverplayer.getY(), serverplayer.getZ(), serverplayer.getYRot(), serverplayer.getXRot());
+                serverplayer.connection.send(new ClientboundSetDefaultSpawnPositionPacket(serverlevel1.getSharedSpawnPos(), serverlevel1.getSharedSpawnAngle()));
+                serverplayer.connection.send(new ClientboundChangeDifficultyPacket(leveldata.getDifficulty(), leveldata.isDifficultyLocked()));
+                serverplayer.connection.send(new ClientboundSetExperiencePacket(serverplayer.experienceProgress, serverplayer.totalExperience, serverplayer.experienceLevel));
+                this.sendLevelInfo(serverplayer, serverlevel1);
+                this.sendPlayerPermissionLevel(serverplayer);
+                serverlevel1.addRespawnedPlayer(serverplayer);
+                this.addPlayer(serverplayer);
+                this.playersByUUID.put(serverplayer.getUUID(), serverplayer);
+                serverplayer.initInventoryMenu();
+                serverplayer.setHealth(serverplayer.getHealth());
+                net.minecraftforge.event.ForgeEventFactory.firePlayerRespawnEvent(serverplayer, bool);
+                if (flag2) {
+                    serverplayer.connection.send(new ClientboundSoundPacket(SoundEvents.RESPAWN_ANCHOR_DEPLETE, SoundSource.BLOCKS, (double) pos.getX(), (double) pos.getY(), (double) pos.getZ(), 1.0F, 1.0F));
+                }
+
+                cir.setReturnValue(serverplayer);
             } else {
                 spawnData.get().removeSpawnData();
             }

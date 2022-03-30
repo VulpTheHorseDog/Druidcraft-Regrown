@@ -1,13 +1,13 @@
 package com.vulp.druidcraftrg.state.properties;
 
-import net.minecraft.util.Direction;
-import net.minecraft.util.IStringSerializable;
+import net.minecraft.core.Direction;
+import net.minecraft.util.StringRepresentable;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public enum CrateType implements IStringSerializable {
+public enum CrateType implements StringRepresentable {
 
     // 2x2x2
     LARGE_NORTH_WEST_DOWN("large_north_west_down", 8, Direction.SOUTH, Direction.EAST, Direction.UP),

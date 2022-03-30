@@ -1,23 +1,24 @@
 package com.vulp.druidcraftrg.blocks.tile;
 
 import com.vulp.druidcraftrg.blocks.RopeBlock;
-import com.vulp.druidcraftrg.init.TileInit;
-import net.minecraft.block.BlockState;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityType;
-import net.minecraft.util.ActionResultType;
+import com.vulp.druidcraftrg.init.BlockEntityInit;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
-public class RopeTileEntity extends TileEntity {
+public class RopeTileEntity extends BlockEntity {
 
     private boolean forceKnot = false;
 
-    public RopeTileEntity() {
-        super(TileInit.rope);
+    public RopeTileEntity(BlockEntityType<?> tileEntityType, BlockPos pos, BlockState state) {
+        super(tileEntityType, pos, state);
     }
 
-    public RopeTileEntity(TileEntityType<?> tileEntityType) {
-        super(tileEntityType);
+    public RopeTileEntity(BlockPos pos, BlockState state) {
+        super(BlockEntityInit.rope, pos, state);
     }
 
     public boolean hasKnot() {
@@ -29,40 +30,39 @@ public class RopeTileEntity extends TileEntity {
         this.forceKnot = force;
     }
 
-    public ActionResultType forceToggle() {
+    public InteractionResult forceToggle() {
         BlockState state = this.getBlockState();
         if (state.getBlock() instanceof RopeBlock) {
             if (!RopeBlock.hasIntersection(state)) {
                 this.forceKnot = !this.forceKnot;
-                return ActionResultType.SUCCESS;
+                return InteractionResult.SUCCESS;
             }
         }
-        return ActionResultType.FAIL;
+        return InteractionResult.FAIL;
     }
 
     @Override
-    public CompoundNBT save(CompoundNBT compound) {
-        super.save(compound);
+    public void saveAdditional(CompoundTag compound) {
+        super.saveAdditional(compound);
         compound.putBoolean("Knot", this.forceKnot);
-        return compound;
     }
 
     @Override
-    public void load(BlockState state, CompoundNBT compound) {
-        super.load(state, compound);
+    public void load(CompoundTag compound) {
+        super.load(compound);
         this.forceKnot = compound.getBoolean("Knot");
     }
 
     @Override
-    public CompoundNBT getUpdateTag() {
-        CompoundNBT nbtTagCompound = new CompoundNBT();
-        save(nbtTagCompound);
+    public CompoundTag getUpdateTag() {
+        CompoundTag nbtTagCompound = new CompoundTag();
+        saveAdditional(nbtTagCompound);
         return nbtTagCompound;
     }
 
     @Override
-    public void handleUpdateTag(BlockState state, CompoundNBT tag) {
-        this.load(state, tag);
+    public void handleUpdateTag(CompoundTag tag) {
+        this.load(tag);
     }
 
 }

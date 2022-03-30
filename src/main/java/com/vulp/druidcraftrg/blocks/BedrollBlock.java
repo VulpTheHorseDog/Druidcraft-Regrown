@@ -1,45 +1,43 @@
 package com.vulp.druidcraftrg.blocks;
 
-import net.minecraft.block.BedBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockRenderType;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.DyeColor;
-import net.minecraft.state.properties.BedPart;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.Direction;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.BlockRayTraceResult;
-import net.minecraft.util.math.shapes.ISelectionContext;
-import net.minecraft.util.math.shapes.VoxelShape;
-import net.minecraft.util.math.shapes.VoxelShapes;
-import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.Explosion;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.World;
-
-import java.util.concurrent.atomic.AtomicReference;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.TextComponent;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.EntityCollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class BedrollBlock extends BedBlock {
 
-    protected static final VoxelShape[] HEAD_SHAPES = new VoxelShape[]{VoxelShapes.or(VoxelShapes.or(Block.box(1.0D, 0.0D, 0.0D, 15.0D, 4.0D, 2.0D), Block.box(0.0D, 0.0D, 2.0D, 16.0D, 5.0D, 9.0D)), VoxelShapes.or(Block.box(2.0D, 2.0D, 9.0D, 14.0D, 4.0D, 15.0D), Block.box(1.0D, 0.0D, 9.0D, 15.0D, 2.0D, 16.0D))),
-            VoxelShapes.or(VoxelShapes.or(Block.box(14.0D, 0.0D, 1.0D, 16.0D, 4.0D, 15.0D), Block.box(7.0D, 0.0D, 0.0D, 14.0D, 5.0D, 16.0D)), VoxelShapes.or(Block.box(1.0D, 2.0D, 2.0D, 7.0D, 4.0D, 14.0D), Block.box(0.0D, 0.0D, 1.0D, 7.0D, 2.0D, 15.0D))),
-            VoxelShapes.or(VoxelShapes.or(Block.box(1.0D, 0.0D, 14.0D, 15.0D, 4.0D, 16.0D), Block.box(0.0D, 0.0D, 7.0D, 16.0D, 5.0D, 14.0D)), VoxelShapes.or(Block.box(2.0D, 2.0D, 1.0D, 14.0D, 4.0D, 7.0D), Block.box(1.0D, 0.0D, 0.0D, 15.0D, 2.0D, 7.0D))),
-            VoxelShapes.or(VoxelShapes.or(Block.box(0.0D, 0.0D, 1.0D, 2.0D, 4.0D, 15.0D), Block.box(2.0D, 0.0D, 0.0D, 9.0D, 5.0D, 16.0D)), VoxelShapes.or(Block.box(9.0D, 2.0D, 2.0D, 15.0D, 4.0D, 14.0D), Block.box(9.0D, 0.0D, 1.0D, 16.0D, 2.0D, 15.0D)))};
+    protected static final VoxelShape[] HEAD_SHAPES = new VoxelShape[]{Shapes.or(Shapes.or(Block.box(1.0D, 0.0D, 0.0D, 15.0D, 4.0D, 2.0D), Block.box(0.0D, 0.0D, 2.0D, 16.0D, 5.0D, 9.0D)), Shapes.or(Block.box(2.0D, 2.0D, 9.0D, 14.0D, 4.0D, 15.0D), Block.box(1.0D, 0.0D, 9.0D, 15.0D, 2.0D, 16.0D))),
+            Shapes.or(Shapes.or(Block.box(14.0D, 0.0D, 1.0D, 16.0D, 4.0D, 15.0D), Block.box(7.0D, 0.0D, 0.0D, 14.0D, 5.0D, 16.0D)), Shapes.or(Block.box(1.0D, 2.0D, 2.0D, 7.0D, 4.0D, 14.0D), Block.box(0.0D, 0.0D, 1.0D, 7.0D, 2.0D, 15.0D))),
+            Shapes.or(Shapes.or(Block.box(1.0D, 0.0D, 14.0D, 15.0D, 4.0D, 16.0D), Block.box(0.0D, 0.0D, 7.0D, 16.0D, 5.0D, 14.0D)), Shapes.or(Block.box(2.0D, 2.0D, 1.0D, 14.0D, 4.0D, 7.0D), Block.box(1.0D, 0.0D, 0.0D, 15.0D, 2.0D, 7.0D))),
+            Shapes.or(Shapes.or(Block.box(0.0D, 0.0D, 1.0D, 2.0D, 4.0D, 15.0D), Block.box(2.0D, 0.0D, 0.0D, 9.0D, 5.0D, 16.0D)), Shapes.or(Block.box(9.0D, 2.0D, 2.0D, 15.0D, 4.0D, 14.0D), Block.box(9.0D, 0.0D, 1.0D, 16.0D, 2.0D, 15.0D)))};
 
     protected static final VoxelShape[] FOOT_SHAPES = new VoxelShape[]{Block.box(1.0D, 0.0D, 0.0D, 15.0D, 4.0D, 16.0D),
             Block.box(0.0D, 0.0D, 1.0D, 16.0D, 4.0D, 15.0D),
             Block.box(1.0D, 0.0D, 0.0D, 15.0D, 4.0D, 16.0D),
             Block.box(0.0D, 0.0D, 1.0D, 16.0D, 4.0D, 15.0D)};
 
-    protected static final VoxelShape[] HEAD_SHAPES_OPEN = new VoxelShape[]{VoxelShapes.or(VoxelShapes.or(Block.box(1.0D, 0.0D, 0.0D, 15.0D, 7.0D, 2.0D), Block.box(0.0D, 0.0D, 2.0D, 16.0D, 8.0D, 9.0D)), VoxelShapes.or(Block.box(2.0D, 2.0D, 9.0D, 14.0D, 4.0D, 15.0D), Block.box(1.0D, 0.0D, 9.0D, 15.0D, 2.0D, 16.0D))),
-            VoxelShapes.or(VoxelShapes.or(Block.box(14.0D, 0.0D, 1.0D, 16.0D, 7.0D, 15.0D), Block.box(7.0D, 0.0D, 0.0D, 14.0D, 8.0D, 16.0D)), VoxelShapes.or(Block.box(1.0D, 2.0D, 2.0D, 7.0D, 4.0D, 14.0D), Block.box(0.0D, 0.0D, 1.0D, 7.0D, 2.0D, 15.0D))),
-            VoxelShapes.or(VoxelShapes.or(Block.box(1.0D, 0.0D, 14.0D, 15.0D, 7.0D, 16.0D), Block.box(0.0D, 0.0D, 7.0D, 16.0D, 8.0D, 14.0D)), VoxelShapes.or(Block.box(2.0D, 2.0D, 1.0D, 14.0D, 4.0D, 7.0D), Block.box(1.0D, 0.0D, 0.0D, 15.0D, 2.0D, 7.0D))),
-            VoxelShapes.or(VoxelShapes.or(Block.box(0.0D, 0.0D, 1.0D, 2.0D, 7.0D, 15.0D), Block.box(2.0D, 0.0D, 0.0D, 9.0D, 8.0D, 16.0D)), VoxelShapes.or(Block.box(9.0D, 2.0D, 2.0D, 15.0D, 4.0D, 14.0D), Block.box(9.0D, 0.0D, 1.0D, 16.0D, 2.0D, 15.0D)))};
+    protected static final VoxelShape[] HEAD_SHAPES_OPEN = new VoxelShape[]{Shapes.or(Shapes.or(Block.box(1.0D, 0.0D, 0.0D, 15.0D, 7.0D, 2.0D), Block.box(0.0D, 0.0D, 2.0D, 16.0D, 8.0D, 9.0D)), Shapes.or(Block.box(2.0D, 2.0D, 9.0D, 14.0D, 4.0D, 15.0D), Block.box(1.0D, 0.0D, 9.0D, 15.0D, 2.0D, 16.0D))),
+            Shapes.or(Shapes.or(Block.box(14.0D, 0.0D, 1.0D, 16.0D, 7.0D, 15.0D), Block.box(7.0D, 0.0D, 0.0D, 14.0D, 8.0D, 16.0D)), Shapes.or(Block.box(1.0D, 2.0D, 2.0D, 7.0D, 4.0D, 14.0D), Block.box(0.0D, 0.0D, 1.0D, 7.0D, 2.0D, 15.0D))),
+            Shapes.or(Shapes.or(Block.box(1.0D, 0.0D, 14.0D, 15.0D, 7.0D, 16.0D), Block.box(0.0D, 0.0D, 7.0D, 16.0D, 8.0D, 14.0D)), Shapes.or(Block.box(2.0D, 2.0D, 1.0D, 14.0D, 4.0D, 7.0D), Block.box(1.0D, 0.0D, 0.0D, 15.0D, 2.0D, 7.0D))),
+            Shapes.or(Shapes.or(Block.box(0.0D, 0.0D, 1.0D, 2.0D, 7.0D, 15.0D), Block.box(2.0D, 0.0D, 0.0D, 9.0D, 8.0D, 16.0D)), Shapes.or(Block.box(9.0D, 2.0D, 2.0D, 15.0D, 4.0D, 14.0D), Block.box(9.0D, 0.0D, 1.0D, 16.0D, 2.0D, 15.0D)))};
 
     protected static final VoxelShape[] FOOT_SHAPES_OPEN = new VoxelShape[]{Block.box(1.0D, 0.0D, 0.0D, 15.0D, 7.0D, 16.0D),
             Block.box(0.0D, 0.0D, 1.0D, 16.0D, 7.0D, 15.0D),
@@ -51,27 +49,28 @@ public class BedrollBlock extends BedBlock {
     }
 
     @Override
-    public VoxelShape getShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter reader, BlockPos pos, CollisionContext context) {
         int i = state.getValue(FACING).get2DDataValue();
         return state.getValue(PART) == BedPart.HEAD ? (state.getValue(OCCUPIED) ? HEAD_SHAPES_OPEN[i] : HEAD_SHAPES[i]) : (state.getValue(OCCUPIED) ? FOOT_SHAPES_OPEN[i] : FOOT_SHAPES[i]);
     }
 
     @Override
-    public VoxelShape getCollisionShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter reader, BlockPos pos, CollisionContext context) {
         int i = state.getValue(FACING).get2DDataValue();
-        return context.getEntity() instanceof PlayerEntity && ((PlayerEntity) context.getEntity()).isSleeping() ? FOOT_SHAPES_OPEN[i] : FOOT_SHAPES[i];
+        Entity entity = ((EntityCollisionContext) context).getEntity();
+        return entity instanceof Player && ((Player) entity).isSleeping() ? FOOT_SHAPES_OPEN[i] : FOOT_SHAPES[i];
     }
 
     @Override
-    public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockRayTraceResult rayTrace) {
+    public InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult rayTrace) {
         if (world.isClientSide) {
-            return ActionResultType.CONSUME;
+            return InteractionResult.CONSUME;
         } else {
             if (state.getValue(PART) != BedPart.HEAD) {
                 pos = pos.relative(state.getValue(FACING));
                 state = world.getBlockState(pos);
                 if (!state.is(this)) {
-                    return ActionResultType.CONSUME;
+                    return InteractionResult.CONSUME;
                 }
             }
             if (!canSetSpawn(world)) {
@@ -80,11 +79,11 @@ public class BedrollBlock extends BedBlock {
                 if (world.getBlockState(blockpos).is(this)) {
                     world.removeBlock(blockpos, false);
                 }
-                world.explode(null, DamageSource.badRespawnPointExplosion(), null, (double)pos.getX() + 0.5D, (double)pos.getY() + 0.5D, (double)pos.getZ() + 0.5D, 5.0F, true, Explosion.Mode.DESTROY);
-                return ActionResultType.SUCCESS;
+                world.explode(null, DamageSource.badRespawnPointExplosion(), null, (double)pos.getX() + 0.5D, (double)pos.getY() + 0.5D, (double)pos.getZ() + 0.5D, 5.0F, true, Explosion.BlockInteraction.DESTROY);
+                return InteractionResult.SUCCESS;
             } else if (state.getValue(OCCUPIED)) {
-                player.displayClientMessage(new TranslationTextComponent("block.minecraft.bed.occupied"), true);
-                return ActionResultType.SUCCESS;
+                player.displayClientMessage(new TextComponent("block.minecraft.bed.occupied"), true);
+                return InteractionResult.SUCCESS;
             } else {
                 player.startSleepInBed(pos).ifLeft((sleepResult) -> {
                     if (sleepResult != null) {
@@ -92,24 +91,24 @@ public class BedrollBlock extends BedBlock {
                     }
 
                 });
-                return ActionResultType.SUCCESS;
+                return InteractionResult.SUCCESS;
             }
         }
     }
 
     @Override
-    public void updateEntityAfterFallOn(IBlockReader reader, Entity entity) {
+    public void updateEntityAfterFallOn(BlockGetter reader, Entity entity) {
         entity.setDeltaMovement(entity.getDeltaMovement().multiply(1.0D, 0.0D, 1.0D));
     }
 
     @Override
-    public void fallOn(World p_180658_1_, BlockPos p_180658_2_, Entity p_180658_3_, float p_180658_4_) {
-        p_180658_3_.causeFallDamage(p_180658_4_, 0.5F);
+    public void fallOn(Level level, BlockState state, BlockPos pos, Entity entity, float amount) {
+        super.fallOn(level, state, pos, entity, amount * 0.5F);
     }
 
     @Override
-    public BlockRenderType getRenderShape(BlockState state) {
-        return BlockRenderType.MODEL;
+    public RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
     }
 
 }

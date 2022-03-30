@@ -1,14 +1,14 @@
 package com.vulp.druidcraftrg.inventory;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
-public class MultiSidedInventory implements IInventory {
+public class MultiSidedInventory implements Container {
 
-    private final IInventory[] containers;
+    private final Container[] containers;
 
-    public MultiSidedInventory(IInventory... inventories) {
+    public MultiSidedInventory(Container... inventories) {
         if (inventories.length > 1) {
             for (int i = 0; i < inventories.length; i++) {
                 if (inventories[i] == null) {
@@ -25,14 +25,14 @@ public class MultiSidedInventory implements IInventory {
 
     public int getContainerSize() {
         int size = 0;
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             size += container.getContainerSize();
         }
         return size;
     }
 
     public boolean isEmpty() {
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             if (!container.isEmpty()) {
                 return false;
             }
@@ -40,8 +40,8 @@ public class MultiSidedInventory implements IInventory {
         return true;
     }
 
-    public boolean contains(IInventory inv) {
-        for (IInventory container : containers) {
+    public boolean contains(Container inv) {
+        for (Container container : containers) {
             if (container == inv) {
                 return true;
             }
@@ -51,7 +51,7 @@ public class MultiSidedInventory implements IInventory {
 
     public ItemStack getItem(int slot) {
         int sizeTicker = 0;
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             sizeTicker += container.getContainerSize();
             if (slot < sizeTicker) {
                 return container.getItem(slot + container.getContainerSize() - sizeTicker);
@@ -62,7 +62,7 @@ public class MultiSidedInventory implements IInventory {
 
     public ItemStack removeItem(int slot, int count) {
         int sizeTicker = 0;
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             sizeTicker += container.getContainerSize();
             if (slot < sizeTicker) {
                 return container.removeItem(slot + container.getContainerSize() - sizeTicker, count);
@@ -73,7 +73,7 @@ public class MultiSidedInventory implements IInventory {
 
     public ItemStack removeItemNoUpdate(int slot) {
         int sizeTicker = 0;
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             sizeTicker += container.getContainerSize();
             if (slot < sizeTicker) {
                 return container.removeItemNoUpdate(slot + container.getContainerSize() - sizeTicker);
@@ -84,7 +84,7 @@ public class MultiSidedInventory implements IInventory {
 
     public void setItem(int slot, ItemStack itemStack) {
         int sizeTicker = 0;
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             sizeTicker += container.getContainerSize();
             if (slot < sizeTicker) {
                 container.setItem(slot + container.getContainerSize() - sizeTicker, itemStack);
@@ -98,13 +98,13 @@ public class MultiSidedInventory implements IInventory {
     }
 
     public void setChanged() {
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             container.setChanged();
         }
     }
 
-    public boolean stillValid(PlayerEntity player) {
-        for (IInventory container : containers) {
+    public boolean stillValid(Player player) {
+        for (Container container : containers) {
             if (!container.stillValid(player)) {
                 return false;
             }
@@ -112,21 +112,21 @@ public class MultiSidedInventory implements IInventory {
         return true;
     }
 
-    public void startOpen(PlayerEntity player) {
-        for (IInventory container : containers) {
+    public void startOpen(Player player) {
+        for (Container container : containers) {
             container.startOpen(player);
         }
     }
 
-    public void stopOpen(PlayerEntity player) {
-        for (IInventory container : containers) {
+    public void stopOpen(Player player) {
+        for (Container container : containers) {
             container.stopOpen(player);
         }
     }
 
     public boolean canPlaceItem(int slot, ItemStack itemStack) {
         int sizeTicker = 0;
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             sizeTicker += container.getContainerSize();
             if (slot < sizeTicker) {
                 return container.canPlaceItem(slot + container.getContainerSize() - sizeTicker, itemStack);
@@ -136,7 +136,7 @@ public class MultiSidedInventory implements IInventory {
     }
 
     public void clearContent() {
-        for (IInventory container : containers) {
+        for (Container container : containers) {
             container.clearContent();
         }
     }

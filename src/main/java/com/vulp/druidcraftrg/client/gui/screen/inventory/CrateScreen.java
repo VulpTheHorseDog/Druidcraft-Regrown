@@ -1,44 +1,42 @@
 package com.vulp.druidcraftrg.client.gui.screen.inventory;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.datafixers.util.Pair;
 import com.vulp.druidcraftrg.DruidcraftRegrownRegistry;
 import com.vulp.druidcraftrg.inventory.container.CrateContainer;
-import net.minecraft.block.Blocks;
+import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.IHasContainer;
-import net.minecraft.client.gui.screen.inventory.ContainerScreen;
-import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.MenuAccess;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.util.ISearchTree;
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.client.util.InputMappings;
-import net.minecraft.client.util.SearchTreeManager;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.container.ClickType;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.inventory.container.Slot;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.Util;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.registry.Registry;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextFormatting;
-import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.RenderProperties;
+import net.minecraftforge.client.event.ContainerScreenEvent;
 
 import javax.annotation.Nullable;
 import java.util.*;
 
 @OnlyIn(Dist.CLIENT)
-public class CrateScreen extends ContainerScreen<CrateContainer> implements IHasContainer<CrateContainer> {
+public class CrateScreen extends AbstractContainerScreen<CrateContainer> implements MenuAccess<CrateContainer> {
     private static final ResourceLocation CONTAINER_BACKGROUND = DruidcraftRegrownRegistry.location("/textures/gui/container/scrollable_container.png");
     private final int containerRows;
     private int scrollOffset;
@@ -49,7 +47,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     private boolean ignoreTextInput;
     private List<Slot> searchList = new ArrayList<>(Collections.emptyList());
 
-    public CrateScreen(CrateContainer container, PlayerInventory playerInventory, ITextComponent displayName) {
+    public CrateScreen(CrateContainer container, Inventory playerInventory, Component displayName) {
         super(container, playerInventory, displayName);
         this.passEvents = false;
         this.containerRows = container.getRowCount();
@@ -61,7 +59,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
 
     public void init() {
         super.init();
-        this.searchBox = new CrateSearchWidget(this.font, 99, 6, 80, 9, new TranslationTextComponent("crate.search"));
+        this.searchBox = new CrateSearchWidget(this.font, 99, 6, 80, 9, new TranslatableComponent("crate.search"));
         this.searchBox.setMaxLength(50);
         this.searchBox.setBordered(false);
         this.searchBox.setVisible(false);
@@ -99,7 +97,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     public boolean keyPressed(int i, int j, int k) {
         this.ignoreTextInput = false;
         boolean flag = this.hoveredSlot != null && this.hoveredSlot.hasItem();
-        boolean flag1 = InputMappings.getKey(i, j).getNumericKeyValue().isPresent();
+        boolean flag1 = InputConstants.getKey(i, j).getNumericKeyValue().isPresent();
         if (flag && flag1 && this.checkHotbarKeyPressed(i, j)) {
             this.ignoreTextInput = true;
             return true;
@@ -127,9 +125,9 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
         if (!this.searchBox.getValue().isEmpty()) {
             String search = this.searchBox.getValue().toLowerCase(Locale.ROOT);
             for (Slot slot : menu.slots) {
-                if (!(slot.container instanceof PlayerInventory) && slot.getItem().getItem() != Items.AIR) {
-                    for (ITextComponent line : slot.getItem().getTooltipLines(this.minecraft.player, this.minecraft.options.advancedItemTooltips ? ITooltipFlag.TooltipFlags.ADVANCED : ITooltipFlag.TooltipFlags.NORMAL)) {
-                        if (TextFormatting.stripFormatting(line.getString()).toLowerCase(Locale.ROOT).contains(search)) {
+                if (!(slot.container instanceof Inventory) && slot.getItem().getItem() != Items.AIR) {
+                    for (Component line : slot.getItem().getTooltipLines(this.minecraft.player, this.minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL)) {
+                        if (ChatFormatting.stripFormatting(line.getString()).toLowerCase(Locale.ROOT).contains(search)) {
                             this.searchList.add(slot);
                             break;
                         }
@@ -157,33 +155,33 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     }*/
 
     @Override
-    public void tick() {
+    protected void containerTick() {
         if (this.searchBox != null) {
             this.searchBox.tick();
         }
-        super.tick();
+        super.containerTick();
     }
 
     @Override
-    public void render(MatrixStack matrixStack, int mouseX, int mouseY, float delta) {
-        this.renderBackground(matrixStack);
+    public void render(PoseStack poseStack, int mouseX, int mouseY, float delta) {
+        this.renderBackground(poseStack);
         int i = this.leftPos;
         int j = this.topPos;
-        this.renderBg(matrixStack, delta, mouseX, mouseY);
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.GuiContainerEvent.DrawBackground(this, matrixStack, mouseX, mouseY));
-        RenderSystem.disableRescaleNormal();
+        this.renderBg(poseStack, delta, mouseX, mouseY);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new ContainerScreenEvent.DrawBackground(this, poseStack, mouseX, mouseY));
         RenderSystem.disableDepthTest();
-        // super.render(matrixStack, mouseX, mouseY, delta);
-        RenderSystem.pushMatrix();
-        RenderSystem.translatef((float)i, (float)j, 0.0F);
-        RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.enableRescaleNormal();
+        // super.render(poseStack, mouseX, mouseY, delta);
+        PoseStack mainPose = RenderSystem.getModelViewStack();
+        mainPose.pushPose();
+        mainPose.translate((float)i, (float)j, 0.0F);
+        RenderSystem.applyModelViewMatrix();
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        this.hoveredSlot = null;
         this.hoveredSlot = null;
         int scroll = (int)((float)this.scrollOffset * (((float)this.containerRows - 6.0F) / 6.0F));
         int k = 240;
         int l = 240;
-        RenderSystem.glMultiTexCoord2f(33986, 240.0F, 240.0F);
-        RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         boolean mouseInBounds = mouseY > this.topPos + 17 && mouseY < this.topPos + 124;
         // Slot Rendering!
         List<Slot> playerInventorySlots = new java.util.ArrayList<>(Collections.emptyList());
@@ -193,10 +191,11 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             // Item and highlight rendering.
             Slot slot = this.menu.slots.get(i1);
             int slotY = slot.y;
-            boolean isPlayerInventory = slot.container instanceof PlayerInventory;
+            boolean isPlayerInventory = slot.container instanceof Inventory;
             if (!isPlayerInventory) {
                 if (slot.isActive()) {
-                    this.renderSlotScrollable(matrixStack, slot, scroll);
+                    RenderSystem.setShader(GameRenderer::getPositionTexShader);
+                    this.renderSlotScrollable(poseStack, slot, scroll);
                 }
                 RenderSystem.disableDepthTest();
                 RenderSystem.colorMask(true, true, true, false);
@@ -210,7 +209,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                         if (k1 > 1 && k1 < 123 && mouseInBounds) {
                             int j1 = slot.x;
                             int slotColor = this.getSlotColor(i1);
-                            this.fillGradient(matrixStack, j1, MathHelper.clamp(k1, 18, 124), j1 + 16, MathHelper.clamp(k1 + 16, 18, 124), slotColor, slotColor);
+                            this.fillGradient(poseStack, j1, Mth.clamp(k1, 18, 124), j1 + 16, Mth.clamp(k1 + 16, 18, 124), slotColor, slotColor);
                         }
                     }
                 }
@@ -220,7 +219,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                         int k1 = slotY - scroll - 220;
                         if (k1 > 0 && k1 < 123) {
                             int j1 = slot.x - 1;
-                            this.fillGradient(matrixStack, j1, MathHelper.clamp(k1, 18, 124), j1 + 18, MathHelper.clamp(k1 + 18, 18, 124), -1072689136, -1072689136);
+                            this.fillGradient(poseStack, j1, Mth.clamp(k1, 18, 124), j1 + 18, Mth.clamp(k1 + 18, 18, 124), -1072689136, -1072689136);
                         }
                     }
                 }
@@ -233,8 +232,9 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             }
 
         }
-
-        RenderSystem.popMatrix();
+        
+        RenderSystem.applyModelViewMatrix();
+        mainPose.popPose();
         RenderSystem.enableDepthTest();
 
 
@@ -243,17 +243,14 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
         // The split here sorts out some weird rendering with the items. I have no clue how rendering works, so for now this works as a messy fix.
 
 
-
-        RenderSystem.disableRescaleNormal();
+        
         RenderSystem.disableDepthTest();
-        // super.render(matrixStack, mouseX, mouseY, delta);
-        RenderSystem.pushMatrix();
-        RenderSystem.translatef((float)i, (float)j, 0.0F);
-        RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.enableRescaleNormal();
-        RenderSystem.glMultiTexCoord2f(33986, 240.0F, 240.0F);
-
-        renderSearchHighlights(matrixStack, delta, mouseX, mouseY);
+        // super.render(poseStack, mouseX, mouseY, delta);
+        mainPose.pushPose();
+        mainPose.translate((float)i, (float)j, 0.0F);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        
+        renderSearchHighlights(poseStack, delta, mouseX, mouseY);
 
         this.setBlitOffset(100);
         this.itemRenderer.blitOffset = 100.0F;
@@ -262,7 +259,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             int stackSize = Math.min(slotItem.getMaxStackSize(), slot.getMaxStackSize(slotItem));
             String s = null;
             if (slotItem.getCount() > stackSize) {
-                s = TextFormatting.YELLOW.toString() + stackSize;
+                s = ChatFormatting.YELLOW.toString() + stackSize;
                 slotItem.setCount(stackSize);
             }
             int slotPos = slot.y - (int) ((float) this.scrollOffset * (((float) this.containerRows - 6.0F) / 6.0F)) - 220;
@@ -275,10 +272,10 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
 
         this.setBlitOffset(250);
         this.itemRenderer.blitOffset = 250.0F;
-        renderForeground(matrixStack, delta, mouseX, mouseY);
+        renderForeground(poseStack, delta, mouseX, mouseY);
         this.setBlitOffset(0);
         this.itemRenderer.blitOffset = 0.0F;
-        this.renderLabels(matrixStack, mouseX, mouseY);
+        this.renderLabels(poseStack, mouseX, mouseY);
 
 
 
@@ -286,20 +283,20 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             Slot slot = this.menu.slots.get(i1 + ticker);
             int slotY = slot.y;
             if (slot.isActive()) {
-                this.renderSlot(matrixStack, slot);
+                this.renderSlot(poseStack, slot);
             }
             if (this.isHovering(slot, (double) mouseX, (double) mouseY) && slot.isActive()) {
                 this.hoveredSlot = slot;
                 RenderSystem.disableDepthTest();
                 RenderSystem.colorMask(true, true, true, false);
                 int slotColor = this.getSlotColor(i1 + ticker);
-                this.fillGradient(matrixStack, slot.x, slotY, slot.x + 16, slotY + 16, slotColor, slotColor);
+                this.fillGradient(poseStack, slot.x, slotY, slot.x + 16, slotY + 16, slotColor, slotColor);
                 RenderSystem.colorMask(true, true, true, true);
                 RenderSystem.enableDepthTest();
             }
         }
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.GuiContainerEvent.DrawForeground(this, matrixStack, mouseX, mouseY));
-        PlayerInventory playerinventory = this.minecraft.player.inventory;
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new ContainerScreenEvent.DrawForeground(this, poseStack, mouseX, mouseY));
+        InventoryMenu playerinventory = this.minecraft.player.inventoryMenu;
         ItemStack itemstack = this.draggingItem.isEmpty() ? playerinventory.getCarried() : this.draggingItem;
         if (!itemstack.isEmpty()) {
             int j2 = 8;
@@ -307,12 +304,12 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             String s = null;
             if (!this.draggingItem.isEmpty() && this.isSplittingStack) {
                 itemstack = itemstack.copy();
-                itemstack.setCount(MathHelper.ceil((float)itemstack.getCount() / 2.0F));
+                itemstack.setCount(Mth.ceil((float)itemstack.getCount() / 2.0F));
             } else if (this.isQuickCrafting && this.quickCraftSlots.size() > 1) {
                 itemstack = itemstack.copy();
                 itemstack.setCount(this.quickCraftingRemainder);
                 if (itemstack.isEmpty()) {
-                    s = "" + TextFormatting.YELLOW + "0";
+                    s = "" + ChatFormatting.YELLOW + "0";
                 }
             }
 
@@ -333,26 +330,26 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             this.renderFloatingItem(this.snapbackItem, l1, i2, (String)null);
         }
 
-        RenderSystem.popMatrix();
+        mainPose.popPose();
         RenderSystem.enableDepthTest();
 
-        this.renderTooltip(matrixStack, mouseX, mouseY);
+        this.renderTooltip(poseStack, mouseX, mouseY);
     }
 
-    protected void renderLabels(MatrixStack matrixStack, int p_230451_2_, int p_230451_3_) {
-        matrixStack.translate(0.0D, 0.0D, 250.0D);
-        this.font.draw(matrixStack, this.title, (float)this.titleLabelX, (float)this.titleLabelY, 4210752);
-        this.font.draw(matrixStack, this.inventory.getDisplayName(), (float)this.inventoryLabelX, (float)this.inventoryLabelY, 4210752);
-        matrixStack.translate(0.0D, 0.0D, 0.0D);
+    protected void renderLabels(PoseStack poseStack, int p_230451_2_, int p_230451_3_) {
+        poseStack.translate(0.0D, 0.0D, 250.0D);
+        this.font.draw(poseStack, this.title, (float)this.titleLabelX, (float)this.titleLabelY, 4210752);
+        this.font.draw(poseStack, this.playerInventoryTitle, (float)this.inventoryLabelX, (float)this.inventoryLabelY, 4210752);
+        poseStack.translate(0.0D, 0.0D, 0.0D);
     }
 
     @Override
-    protected void renderTooltip(MatrixStack matrixStack, int mouseX, int mouseY) {
-        if (this.minecraft.player.inventory.getCarried().isEmpty() && this.hoveredSlot != null && this.hoveredSlot.hasItem()) {
-            if (!(hoveredSlot.container instanceof PlayerInventory) && !(mouseY > this.topPos + 17 && mouseY < this.topPos + 124)) {
+    protected void renderTooltip(PoseStack poseStack, int mouseX, int mouseY) {
+        if (this.minecraft.player.inventoryMenu.getCarried().isEmpty() && this.hoveredSlot != null && this.hoveredSlot.hasItem()) {
+            if (!(hoveredSlot.container instanceof InventoryMenu) && !(mouseY > this.topPos + 17 && mouseY < this.topPos + 124)) {
                 return;
             }
-            this.renderTooltip(matrixStack, this.hoveredSlot.getItem(), mouseX, mouseY);
+            this.renderTooltip(poseStack, this.hoveredSlot.getItem(), mouseX, mouseY);
         }
 
     }
@@ -362,7 +359,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             return false;
         } else {
             this.scrollOffset = (int) (this.scrollOffset - scrollAmount * Math.abs(this.containerRows - 21));
-            this.scrollOffset = MathHelper.clamp(this.scrollOffset, 0, this.scrollOffsetMax);
+            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.scrollOffsetMax);
             //this.scrollTo(this.scrollOffset);
             return true;
         }
@@ -417,7 +414,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             int i = this.topPos + 18;
             int j = i + 197;
             this.scrollOffset = (int)((float)this.scrollOffsetMax * ((float)y - (float)i - 7.5F) / ((float)(j - i) - 15.0F));
-            this.scrollOffset = MathHelper.clamp(this.scrollOffset, 0, this.scrollOffsetMax);
+            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.scrollOffsetMax);
             // scrollTo(this.scrollOffset);
             return true;
         } else {
@@ -453,13 +450,13 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     }
 
     // Item rendering!
-    private void renderSlot(MatrixStack matrixStack, Slot slot) {
+    private void renderSlot(PoseStack poseStack, Slot slot) {
         int i = slot.x;
         int j = slot.y;
         ItemStack itemstack = slot.getItem();
         boolean flag = false;
         boolean flag1 = slot == this.clickedSlot && !this.draggingItem.isEmpty() && !this.isSplittingStack;
-        ItemStack itemstack1 = this.minecraft.player.inventory.getCarried();
+        ItemStack itemstack1 = this.minecraft.player.inventoryMenu.getCarried();
         String s = null;
         if (slot == this.clickedSlot && !this.draggingItem.isEmpty() && this.isSplittingStack && !itemstack.isEmpty()) {
             itemstack = itemstack.copy();
@@ -469,13 +466,13 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                 return;
             }
 
-            if (Container.canItemQuickReplace(slot, itemstack1, true) && this.menu.canDragTo(slot)) {
+            if (AbstractContainerMenu.canItemQuickReplace(slot, itemstack1, true) && this.menu.canDragTo(slot)) {
                 itemstack = itemstack1.copy();
                 flag = true;
-                Container.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack, slot.getItem().isEmpty() ? 0 : slot.getItem().getCount());
+                AbstractContainerMenu.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack, slot.getItem().isEmpty() ? 0 : slot.getItem().getCount());
                 int k = Math.min(itemstack.getMaxStackSize(), slot.getMaxStackSize(itemstack));
                 if (itemstack.getCount() > k) {
-                    s = TextFormatting.YELLOW.toString() + k;
+                    s = ChatFormatting.YELLOW.toString() + k;
                     itemstack.setCount(k);
                 }
             } else {
@@ -490,19 +487,19 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             Pair<ResourceLocation, ResourceLocation> pair = slot.getNoItemIcon();
             if (pair != null) {
                 TextureAtlasSprite textureatlassprite = this.minecraft.getTextureAtlas(pair.getFirst()).apply(pair.getSecond());
-                this.minecraft.getTextureManager().bind(textureatlassprite.atlas().location());
-                blit(matrixStack, i, j, this.getBlitOffset(), 16, 16, textureatlassprite);
+                RenderSystem.setShaderTexture(0, textureatlassprite.atlas().location());
+                blit(poseStack, i, j, this.getBlitOffset(), 16, 16, textureatlassprite);
                 flag1 = true;
             }
         }
 
         if (!flag1) {
             if (flag) {
-                fill(matrixStack, i, j, i + 16, j + 16, -2130706433);
+                fill(poseStack, i, j, i + 16, j + 16, -2130706433);
             }
 
             RenderSystem.enableDepthTest();
-            this.itemRenderer.renderAndDecorateItem(this.minecraft.player, itemstack, i, j);
+            this.itemRenderer.renderAndDecorateItem(this.minecraft.player, itemstack, i, j, 0);
             this.itemRenderer.renderGuiItemDecorations(this.font, itemstack, i, j, s);
         }
 
@@ -511,14 +508,14 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     }
 
     // Scrollable item rendering!
-    private void renderSlotScrollable(MatrixStack matrixStack, Slot slot, int scrollValue) {
+    private void renderSlotScrollable(PoseStack poseStack, Slot slot, int scrollValue) {
         if (slot.y - 219 - scrollValue > 1 && slot.y - 219 - scrollValue < 123) {
             int i = slot.x;
             int j = slot.y - scrollValue - 219;
             ItemStack itemstack = slot.getItem();
             boolean flag = false;
             boolean flag1 = slot == this.clickedSlot && !this.draggingItem.isEmpty() && !this.isSplittingStack;
-            ItemStack itemstack1 = this.minecraft.player.inventory.getCarried();
+            ItemStack itemstack1 = this.minecraft.player.inventoryMenu.getCarried();
             String s = null;
             if (slot == this.clickedSlot && !this.draggingItem.isEmpty() && this.isSplittingStack && !itemstack.isEmpty()) {
                 itemstack = itemstack.copy();
@@ -528,13 +525,13 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                     return;
                 }
 
-                if (Container.canItemQuickReplace(slot, itemstack1, true) && this.menu.canDragTo(slot)) {
+                if (AbstractContainerMenu.canItemQuickReplace(slot, itemstack1, true) && this.menu.canDragTo(slot)) {
                     itemstack = itemstack1.copy();
                     flag = true;
-                    Container.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack, slot.getItem().isEmpty() ? 0 : slot.getItem().getCount());
+                    AbstractContainerMenu.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack, slot.getItem().isEmpty() ? 0 : slot.getItem().getCount());
                     int k = Math.min(itemstack.getMaxStackSize(), slot.getMaxStackSize(itemstack));
                     if (itemstack.getCount() > k) {
-                        s = TextFormatting.YELLOW.toString() + k;
+                        s = ChatFormatting.YELLOW.toString() + k;
                         itemstack.setCount(k);
                     }
                 } else {
@@ -549,18 +546,18 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                 Pair<ResourceLocation, ResourceLocation> pair = slot.getNoItemIcon();
                 if (pair != null) {
                     TextureAtlasSprite textureatlassprite = this.minecraft.getTextureAtlas(pair.getFirst()).apply(pair.getSecond());
-                    this.minecraft.getTextureManager().bind(textureatlassprite.atlas().location());
-                    blit(matrixStack, i, j, this.getBlitOffset(), 16, 16, textureatlassprite);
+                    RenderSystem.setShaderTexture(0, textureatlassprite.atlas().location());
+                    blit(poseStack, i, j, this.getBlitOffset(), 16, 16, textureatlassprite);
                     flag1 = true;
                 }
             }
             if (!flag1) {
                 if (flag) {
-                    fill(matrixStack, i, j, i + 16, j + 16, -2130706433);
+                    fill(poseStack, i, j, i + 16, j + 16, -2130706433);
                 }
 
                 RenderSystem.enableDepthTest();
-                this.itemRenderer.renderAndDecorateItem(this.minecraft.player, itemstack, i, j);
+                this.itemRenderer.renderAndDecorateItem(this.minecraft.player, itemstack, i, j, 0);
                 this.itemRenderer.renderGuiItemDecorations(this.font, itemstack, i, j, s);
             }
 
@@ -570,7 +567,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     }
 
     private boolean isHovering(Slot slot, double mouseX, double mouseY) {
-        if (slot.container instanceof PlayerInventory) {
+        if (slot.container instanceof InventoryMenu) {
             return this.isHovering(slot.x, slot.y, 16, 16, mouseX, mouseY);
         }
         else return this.isHovering(slot.x, slot.y - 219 - (int)((float)this.scrollOffset * (((float)this.containerRows - 6.0F) / 6.0F)), 16, 16, mouseX, mouseY);
@@ -588,7 +585,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
         if (slot != null) {
             this.searchBox.moveCursorToEnd();
             this.searchBox.setHighlightPos(0);
-            boolean flag = slot.container instanceof PlayerInventory;
+            boolean flag = slot.container instanceof InventoryMenu;
             if (!flag & (slot.y < 0 || slot.y - 219 - (int)((float)this.scrollOffset * (((float)this.containerRows - 6.0F) / 6.0F)) > 124)) {
                 return;
             }
@@ -602,7 +599,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     public Slot findSlot(double mouseX, double mouseY) {
         for(int i = 0; i < this.menu.slots.size(); ++i) {
             Slot slot = this.menu.slots.get(i);
-            if (this.isHovering(slot, mouseX, mouseY) && slot.isActive() && (slot.container instanceof PlayerInventory || (mouseY > this.topPos + 18 && mouseY < this.topPos + 124))) {
+            if (this.isHovering(slot, mouseX, mouseY) && slot.isActive() && (slot.container instanceof InventoryMenu || (mouseY > this.topPos + 18 && mouseY < this.topPos + 124))) {
                 return slot;
             }
         }
@@ -610,12 +607,13 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
         return null;
     }
 
-
     private void renderFloatingItem(ItemStack stack, int mouseX, int mouseY, String string) {
-        RenderSystem.translatef(0.0F, 0.0F, 32.0F);
+        PoseStack posestack = RenderSystem.getModelViewStack();
+        posestack.translate(0.0D, 0.0D, 32.0D);
+        RenderSystem.applyModelViewMatrix();
         this.setBlitOffset(200);
         this.itemRenderer.blitOffset = 200.0F;
-        net.minecraft.client.gui.FontRenderer font = stack.getItem().getFontRenderer(stack);
+        Font font = RenderProperties.get(stack).getFont(stack);
         if (font == null) font = this.font;
         this.itemRenderer.renderAndDecorateItem(stack, mouseX, mouseY);
         this.itemRenderer.renderGuiItemDecorations(font, stack, mouseX, mouseY - (this.draggingItem.isEmpty() ? 0 : 8), string);
@@ -624,7 +622,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
     }
 
     private void recalculateQuickCraftRemaining() {
-        ItemStack itemstack = this.minecraft.player.inventory.getCarried();
+        ItemStack itemstack = this.minecraft.player.inventoryMenu.getCarried();
         if (!itemstack.isEmpty() && this.isQuickCrafting) {
             if (this.quickCraftingType == 2) {
                 this.quickCraftingRemainder = itemstack.getMaxStackSize();
@@ -635,7 +633,7 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
                     ItemStack itemstack1 = itemstack.copy();
                     ItemStack itemstack2 = slot.getItem();
                     int i = itemstack2.isEmpty() ? 0 : itemstack2.getCount();
-                    Container.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack1, i);
+                    AbstractContainerMenu.getQuickCraftSlotCount(this.quickCraftSlots, this.quickCraftingType, itemstack1, i);
                     int j = Math.min(itemstack1.getMaxStackSize(), slot.getMaxStackSize(itemstack1));
                     if (itemstack1.getCount() > j) {
                         itemstack1.setCount(j);
@@ -648,8 +646,9 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
         }
     }
 
-    protected void renderSearchHighlights(MatrixStack matrixStack, float delta, int mouseX, int mouseY) {
-        this.minecraft.getTextureManager().bind(CONTAINER_BACKGROUND);RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+    protected void renderSearchHighlights(PoseStack poseStack, float delta, int mouseX, int mouseY) {
+        RenderSystem.setShaderTexture(0, CONTAINER_BACKGROUND);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         int i = 0;
         int j = 0;
         List<Integer> slotNumbers = new ArrayList<>(Collections.emptyList());
@@ -665,33 +664,34 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             for (int x = 0; x < 9; x++) {
                 if (slotNumbers.contains(x + y * 9)) {
                     if (ySize != 20) {
-                        this.blit(matrixStack, i + 7 + x * 18 - 1, j + 19 - 1, 194, 38 - yPos - 1, 20, yPos + 1);
+                        this.blit(poseStack, i + 7 + x * 18 - 1, j + 19 - 1, 194, 38 - yPos - 1, 20, yPos + 1);
                     } else {
-                        this.blit(matrixStack, i + 7 + x * 18 - 1, yPos - (yPos == 0 ? 0 : 1), 194, yPos == 0 ? 19 : 18, 20, yPos == 0 ? 19 : 20);
+                        this.blit(poseStack, i + 7 + x * 18 - 1, yPos - (yPos == 0 ? 0 : 1), 194, yPos == 0 ? 19 : 18, 20, yPos == 0 ? 19 : 20);
                     }
                 }
             }
         }
     }
 
-    protected void renderForeground(MatrixStack matrixStack, float delta, int mouseX, int mouseY) {
-        this.minecraft.getTextureManager().bind(CONTAINER_BACKGROUND);
-        this.blit(matrixStack, 0, 0, 0, 0, 194, 18);
-        this.blit(matrixStack, 0, 18, 0, 18, 8, 106);
-        this.blit(matrixStack, 168, 18, 168, 18, 26, 106);
-        this.blit(matrixStack, 0, 124, 0, 124, 194, 97);
-        this.blit(matrixStack, 174, 18 + (int)(180.0F * ((float)this.scrollOffset / (float)this.scrollOffsetMax)), this.canScroll ? 0 : 12, 221, 12, 15);
-        matrixStack.translate(0.0D, 0.0D, 300.0D);
-        this.searchBox.render(matrixStack, mouseX, mouseY, delta);
-        matrixStack.translate(0.0D, 0.0D, -200.0D);
+    protected void renderForeground(PoseStack poseStack, float delta, int mouseX, int mouseY) {
+        PoseStack mainPose = RenderSystem.getModelViewStack();
+        RenderSystem.setShaderTexture(0, CONTAINER_BACKGROUND);
+        this.blit(poseStack, 0, 0, 0, 0, 194, 18);
+        this.blit(poseStack, 0, 18, 0, 18, 8, 106);
+        this.blit(poseStack, 168, 18, 168, 18, 26, 106);
+        this.blit(poseStack, 0, 124, 0, 124, 194, 97);
+        this.blit(poseStack, 174, 18 + (int)(180.0F * ((float)this.scrollOffset / (float)this.scrollOffsetMax)), this.canScroll ? 0 : 12, 221, 12, 15);
+        mainPose.translate(0.0D, 0.0D, 300.0D);
+        this.searchBox.render(poseStack, mouseX, mouseY, delta);
+        mainPose.translate(0.0D, 0.0D, -200.0D);
     }
 
-    protected void renderBg(MatrixStack matrixStack, float delta, int mouseX, int mouseY) {
-        this.minecraft.getTextureManager().bind(CONTAINER_BACKGROUND);
-        RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+    protected void renderBg(PoseStack poseStack, float delta, int mouseX, int mouseY) {
+        RenderSystem.setShaderTexture(0, CONTAINER_BACKGROUND);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         int i = this.leftPos;
         int j = this.topPos;
-        this.blit(matrixStack, i + 8, j + 18, 8, 18, 160, 106);
+        this.blit(poseStack, i + 8, j + 18, 8, 18, 160, 106);
         for (int y = 0; y < this.containerRows; y++) {
             int yPos = j + 17 + y * 18 - (int)((float)this.scrollOffset * (((float)this.containerRows - 6.0F) / 6.0F));
             if (yPos < j || yPos > j + 123) {
@@ -699,15 +699,15 @@ public class CrateScreen extends ContainerScreen<CrateContainer> implements IHas
             }
             int ySize = yPos < 18 ? Math.abs(yPos - 18) : 18;
             for (int x = 0; x < 9; x++) {
-                this.blit(matrixStack, i + 7 + x * 18, (ySize != 18 ? j + 18 : yPos), 194, 18 - ySize, 18, ySize);
+                this.blit(poseStack, i + 7 + x * 18, (ySize != 18 ? j + 18 : yPos), 194, 18 - ySize, 18, ySize);
             }
         }
 
     }
 
-    private class CrateSearchWidget extends TextFieldWidget {
+    private class CrateSearchWidget extends EditBox {
 
-        public CrateSearchWidget(FontRenderer fontRenderer, int x, int y, int width, int height, ITextComponent text) {
+        public CrateSearchWidget(Font fontRenderer, int x, int y, int width, int height, TranslatableComponent text) {
             super(fontRenderer, x, y, width, height, text);
         }
 

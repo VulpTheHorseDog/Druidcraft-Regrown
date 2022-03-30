@@ -1,32 +1,39 @@
 package com.vulp.druidcraftrg.capabilities;
 
-import net.minecraft.nbt.INBT;
-import net.minecraft.util.Direction;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.CapabilityInject;
-import net.minecraftforge.common.capabilities.ICapabilitySerializable;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraftforge.common.capabilities.*;
 import net.minecraftforge.common.util.LazyOptional;
 
-public class TempSpawnProvider implements ICapabilitySerializable<INBT> {
+import javax.annotation.Nonnull;
 
-    @CapabilityInject(ITempSpawn.class)
-    public static Capability<ITempSpawn> TEMP_SPAWN = null;
+public class TempSpawnProvider implements ICapabilityProvider, ICapabilitySerializable<CompoundTag> {
 
-    private LazyOptional<ITempSpawn> INSTANCE = LazyOptional.of(TEMP_SPAWN::getDefaultInstance);
+    public static Capability<TempSpawnCapability> TEMP_SPAWN_CAPABILITY = CapabilityManager.get(new CapabilityToken<>(){});
+    private TempSpawnCapability cache = null;
+    private final LazyOptional<TempSpawnCapability> INSTANCE = LazyOptional.of(this::createInstance);
+
+    @Nonnull
+    private TempSpawnCapability createInstance() {
+        if (this.cache == null) {
+            this.cache = new TempSpawnCapability();
+        }
+        return this.cache;
+    }
 
     @Override
     public <T> LazyOptional<T> getCapability(Capability<T> cap, Direction side) {
-        return cap == TEMP_SPAWN ? INSTANCE.cast() : LazyOptional.empty();
+        return cap == TEMP_SPAWN_CAPABILITY ? INSTANCE.cast() : LazyOptional.empty();
     }
 
     @Override
-    public INBT serializeNBT() {
-        return TEMP_SPAWN.getStorage().writeNBT(TEMP_SPAWN, this.INSTANCE.orElseThrow(() -> new IllegalArgumentException("LazyOptional must not be empty!")), null);
+    public CompoundTag serializeNBT() {
+        return createInstance().serializeNBT();
     }
 
     @Override
-    public void deserializeNBT(INBT nbt) {
-        TEMP_SPAWN.getStorage().readNBT(TEMP_SPAWN, this.INSTANCE.orElseThrow(() -> new IllegalArgumentException("LazyOptional must not be empty!")), null, nbt);
+    public void deserializeNBT(CompoundTag nbt) {
+        createInstance().deserializeNBT(nbt);
     }
 
 }

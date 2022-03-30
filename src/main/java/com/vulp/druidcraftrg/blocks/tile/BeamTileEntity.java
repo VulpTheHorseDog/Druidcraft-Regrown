@@ -1,37 +1,38 @@
 package com.vulp.druidcraftrg.blocks.tile;
 
 import com.vulp.druidcraftrg.blocks.BeamBlock;
-import com.vulp.druidcraftrg.init.TileInit;
-import net.minecraft.block.BlockState;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.tileentity.ITickableTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityType;
-import net.minecraft.util.Direction;
+import com.vulp.druidcraftrg.init.BlockEntityInit;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class BeamTileEntity extends TileEntity implements ITickableTileEntity {
+public class BeamTileEntity extends BlockEntity {
 
     private Direction.Axis lashingAxis;
     private List<Direction> ropeDirections = Collections.emptyList();
     private boolean initTick = false;
 
-    public BeamTileEntity() {
-        super(TileInit.beam);
+    public BeamTileEntity(BlockPos pos, BlockState state) {
+        super(BlockEntityInit.beam, pos, state);
     }
 
-    public BeamTileEntity(TileEntityType<?> tileEntityType) {
-        super(tileEntityType);
+    public BeamTileEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState state) {
+        super(blockEntityType, pos, state);
     }
 
     // TODO: Work out how to do calculations after block placement.
     @Override
-    public CompoundNBT save(CompoundNBT compound) {
-        super.save(compound);
+    public void saveAdditional(CompoundTag compound) {
+        super.saveAdditional(compound);
         if (this.lashingAxis != null) {
             compound.putInt("Axis", this.lashingAxis.ordinal());
         } else {
@@ -40,12 +41,11 @@ public class BeamTileEntity extends TileEntity implements ITickableTileEntity {
         List<Integer> directions = new ArrayList<>(Collections.emptyList());
         this.ropeDirections.forEach(dir -> directions.add(dir.ordinal()));
         compound.putIntArray("Dir", directions);
-        return compound;
     }
 
     @Override
-    public void load(BlockState state, CompoundNBT compound) {
-        super.load(state, compound);
+    public void load(CompoundTag compound) {
+        super.load(compound);
         this.lashingAxis = compound.contains("Axis") ? Direction.Axis.values()[compound.getInt("Axis")] : null;
         int[] directions = compound.getIntArray("Dir");
         this.ropeDirections = new ArrayList<>(Collections.emptyList());
@@ -54,24 +54,24 @@ public class BeamTileEntity extends TileEntity implements ITickableTileEntity {
         }
     }
 
-    @Override
-    public void tick() {
-        if (!this.initTick) {
-            this.initTick = true;
-            this.update(this.getBlockState());
+    public static void serverTick(Level level, BlockPos pos, BlockState state, BeamTileEntity blockEntity) {
+        if (!blockEntity.initTick) {
+            blockEntity.initTick = true;
+            blockEntity.update(state);
         }
     }
 
     @Override
-    public CompoundNBT getUpdateTag() {
-        CompoundNBT nbtTagCompound = new CompoundNBT();
-        save(nbtTagCompound);
+    public CompoundTag getUpdateTag() {
+        CompoundTag nbtTagCompound = new CompoundTag();
+        saveAdditional(nbtTagCompound);
         return nbtTagCompound;
     }
 
     @Override
-    public void handleUpdateTag(BlockState state, CompoundNBT tag) {
-        this.load(state, tag);
+    public void handleUpdateTag(CompoundTag tag) {
+        this.load(tag);
+        super.handleUpdateTag(tag);
     }
 
     @Nullable
@@ -86,6 +86,7 @@ public class BeamTileEntity extends TileEntity implements ITickableTileEntity {
         this.ropeDirections = BeamBlock.getRopeDirections(this.level, this.getBlockPos(), state);
         this.lashingAxis = findAxis(state);
     }
+
 
     public Direction.Axis getLashingAxis() {
         return this.lashingAxis;

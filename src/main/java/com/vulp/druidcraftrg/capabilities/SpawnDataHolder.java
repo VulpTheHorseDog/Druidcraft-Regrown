@@ -1,21 +1,21 @@
 package com.vulp.druidcraftrg.capabilities;
 
-import net.minecraft.util.RegistryKey;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 
 public class SpawnDataHolder {
 
     private final BlockPos pos;
-    private final RegistryKey<World> dimension;
+    private final ResourceKey<Level> dimension;
     private final float angle;
     private final boolean forced;
 
     public SpawnDataHolder() {
-        this(null, World.OVERWORLD, 0.0F, false);
+        this(null, Level.OVERWORLD, 0.0F, false);
     }
 
-    public SpawnDataHolder(BlockPos pos, RegistryKey<World> dimension, float angle, boolean forced) {
+    public SpawnDataHolder(BlockPos pos, ResourceKey<Level> dimension, float angle, boolean forced) {
         this.pos = pos;
         this.dimension = dimension;
         this.angle = angle;
@@ -26,7 +26,7 @@ public class SpawnDataHolder {
         return this.pos;
     }
 
-    public RegistryKey<World> getDimension() {
+    public ResourceKey<Level> getDimension() {
         return this.dimension;
     }
 

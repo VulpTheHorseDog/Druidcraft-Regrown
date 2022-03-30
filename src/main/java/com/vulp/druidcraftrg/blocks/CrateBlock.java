@@ -2,42 +2,37 @@ package com.vulp.druidcraftrg.blocks;
 
 import com.vulp.druidcraftrg.DruidcraftRegrown;
 import com.vulp.druidcraftrg.blocks.tile.CrateTileEntity;
-import com.vulp.druidcraftrg.init.BlockInit;
+import com.vulp.druidcraftrg.init.BlockEntityInit;
 import com.vulp.druidcraftrg.inventory.MultiSidedInventory;
 import com.vulp.druidcraftrg.inventory.container.CrateContainer;
 import com.vulp.druidcraftrg.state.properties.CrateType;
-import net.minecraft.block.*;
-import net.minecraft.entity.monster.piglin.PiglinTasks;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.DoubleSidedInventory;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.InventoryHelper;
-import net.minecraft.inventory.container.ChestContainer;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.inventory.container.INamedContainerProvider;
-import net.minecraft.item.BlockItemUseContext;
-import net.minecraft.state.EnumProperty;
-import net.minecraft.state.StateContainer;
-import net.minecraft.tileentity.ChestTileEntity;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.tileentity.TileEntityMerger;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.Direction;
-import net.minecraft.util.Hand;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.BlockRayTraceResult;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.IWorld;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.world.*;
+import net.minecraft.world.entity.monster.piglin.PiglinAi;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.BlockHitResult;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-public class CrateBlock extends ContainerBlock {
+public class CrateBlock extends BaseEntityBlock {
 
     public static final EnumProperty<CrateType> TYPE = EnumProperty.create("type", CrateType.class);
     public static final int[] CRATE_TYPE_START_POINTS = new int[]{0, 8, 12, 16, 20, 22, 24, 26};
@@ -113,29 +108,34 @@ public class CrateBlock extends ContainerBlock {
 
     @Nullable
     @Override
-    public TileEntity newBlockEntity(IBlockReader reader) {
-        return new CrateTileEntity();
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new CrateTileEntity(pos, state);
     }
 
-    public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockRayTraceResult rayTrace) {
+    @Nullable
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> blockEntity) {
+        return createTickerHelper(blockEntity, BlockEntityInit.crate, CrateTileEntity::serverTick);
+    }
+
+    public InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult rayTrace) {
         if (world.isClientSide) {
-            return ActionResultType.SUCCESS;
+            return InteractionResult.SUCCESS;
         } else {
-            INamedContainerProvider inamedcontainerprovider = this.getMenuProvider(state, world, pos);
-            if (inamedcontainerprovider != null) {
-                player.openMenu(new INamedContainerProvider() {
+            MenuProvider menuProvider = this.getMenuProvider(state, world, pos);
+            if (menuProvider != null) {
+                player.openMenu(new MenuProvider() {
 
                     @Nullable
                     private List<CrateTileEntity> findTileList() {
                         List<CrateTileEntity> tileList = new ArrayList<>(Collections.emptyList());
-                        TileEntity tile = world.getBlockEntity(pos);
+                        BlockEntity tile = world.getBlockEntity(pos);
                         if (tile instanceof CrateTileEntity) {
                             List<BlockPos> array = ((CrateTileEntity) tile).getCrateArray();
                             if (array == null) {
                                 array = CrateBlock.getCratePosList(world, pos);
                             }
                             for (BlockPos tempPos : array) {
-                                TileEntity tempTile = world.getBlockEntity(tempPos);
+                                BlockEntity tempTile = world.getBlockEntity(tempPos);
                                 if (tempTile instanceof CrateTileEntity)
                                 tileList.add((CrateTileEntity) tempTile);
                             }
@@ -146,7 +146,7 @@ public class CrateBlock extends ContainerBlock {
                     }
 
                     @Override
-                    public ITextComponent getDisplayName() {
+                    public Component getDisplayName() {
                         List<CrateTileEntity> tileList = findTileList();
                         if (tileList != null) {
                             for (CrateTileEntity crateTileEntity : tileList) {
@@ -155,12 +155,12 @@ public class CrateBlock extends ContainerBlock {
                                 }
                             }
                         }
-                        return new TranslationTextComponent("container.druidcraftrg.crate");
+                        return new TranslatableComponent("container.druidcraftrg.crate");
                     }
 
                     @Nullable
                     @Override
-                    public Container createMenu(int id, PlayerInventory playerInventory, PlayerEntity player) {
+                    public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
 
                         List<CrateTileEntity> tileList = findTileList();
                         if (tileList != null) {
@@ -180,14 +180,14 @@ public class CrateBlock extends ContainerBlock {
                 });
 
                 // player.awardStat(this.getOpenChestStat());
-                PiglinTasks.angerNearbyPiglins(player, true);
+                PiglinAi.angerNearbyPiglins(player, true);
             }
 
-            return ActionResultType.CONSUME;
+            return InteractionResult.CONSUME;
         }
     }
 
-    public static CrateContainer getSizedContainer(BlockState state, int id, PlayerInventory playerInventory, IInventory inventory) {
+    public static CrateContainer getSizedContainer(BlockState state, int id, Inventory playerInventory, Container inventory) {
         switch (state.getValue(CrateBlock.TYPE).getCrateSize()) {
             case 2:
                 return CrateContainer.doubleCrate(id, playerInventory, inventory);
@@ -200,7 +200,7 @@ public class CrateBlock extends ContainerBlock {
         }
     }
 
-    public static List<BlockPos> getCratePosList(World world, BlockPos pos) {
+    public static List<BlockPos> getCratePosList(Level world, BlockPos pos) {
         List<Direction> directions = getAttachDirectionsFromType(world.getBlockState(pos).getValue(TYPE));
         int[] integers = new int[]{0, 0, 0};
         for (Direction dir : directions) {
@@ -217,7 +217,7 @@ public class CrateBlock extends ContainerBlock {
         return posList;
     }
 
-    public static boolean isCrateConfigValid(World world, List<BlockPos> cratePositions) {
+    public static boolean isCrateConfigValid(Level world, List<BlockPos> cratePositions) {
         for (BlockPos currentPos : cratePositions) {
             for (Direction dir : getAttachDirectionsFromType(world.getBlockState(currentPos).getValue(TYPE))) {
                 if (!getAttachDirectionsFromType(world.getBlockState(currentPos.relative(dir)).getValue(TYPE)).contains(dir.getOpposite())) {
@@ -228,7 +228,7 @@ public class CrateBlock extends ContainerBlock {
         return true;
     }
 
-    private boolean[] createCrateArray(IWorld world, BlockPos pos) {
+    private boolean[] createCrateArray(LevelAccessor world, BlockPos pos) {
         boolean[] boolArray = new boolean[27];
         int ticker = 0;
         for (int y = -1; y < 2; y++) {
@@ -244,7 +244,7 @@ public class CrateBlock extends ContainerBlock {
     }
 
     // up/down = increments of 9, east/west = increments of 3.
-    private CrateType detectCrateConfig(IWorld world, BlockPos pos, boolean[] boolArray, boolean updateConfig) {
+    private CrateType detectCrateConfig(LevelAccessor world, BlockPos pos, boolean[] boolArray, boolean updateConfig) {
         int ticker = 0;
 
         for (int m = 0; m < 7; m++) {
@@ -294,7 +294,7 @@ public class CrateBlock extends ContainerBlock {
                             HashMap<BlockPos, CrateType> map = checkConfigValid(world, pos, placeType, ticker);
                             if (map != null) {
                                 if (updateConfig) {
-                                    map.forEach((blockPos, crateType) -> world.setBlock(blockPos, BlockInit.crate.defaultBlockState().setValue(TYPE, crateType), 2));
+                                    map.forEach((blockPos, crateType) -> world.setBlock(blockPos, this.defaultBlockState().setValue(TYPE, crateType), 2));
                                 }
                                 return placeType;
                             }
@@ -307,7 +307,7 @@ public class CrateBlock extends ContainerBlock {
         return CrateType.SMALL;
     }
 
-    private boolean[] crateTypeToCrateArray(IWorld world, BlockPos pos, CrateType type) {
+    private boolean[] crateTypeToCrateArray(LevelAccessor world, BlockPos pos, CrateType type) {
         List<Direction> directions = getAttachDirectionsFromType(type);
         boolean[] array = createCrateArray(world, pos);
         boolean[] arrayMask = new boolean[27];
@@ -333,7 +333,7 @@ public class CrateBlock extends ContainerBlock {
     // Triggers when setBlock() happens! Is a problem.
     // TODO: On broken, crates outside of original crate bounds are still connected to, which shouldn't happen.
     @Override
-    public void onRemove(BlockState state, World world, BlockPos pos, BlockState replacingState, boolean bool) {
+    public void onRemove(BlockState state, Level world, BlockPos pos, BlockState replacingState, boolean bool) {
         if (replacingState.getBlock() != this) {
             CrateType type = state.getValue(TYPE);
             List<Direction> directions = getAttachDirectionsFromType(type);
@@ -356,9 +356,9 @@ public class CrateBlock extends ContainerBlock {
                     world.setBlock(blockPos, currentState.setValue(TYPE, detectCrateConfig(world, blockPos, crateTypeToCrateArray(world, blockPos, currentState.getValue(TYPE)), true)), 2); // Try setting to false sometime?
                 }
             });
-            TileEntity tileentity = world.getBlockEntity(pos);
-            if (tileentity instanceof IInventory) {
-                InventoryHelper.dropContents(world, pos, (IInventory)tileentity);
+            BlockEntity tileentity = world.getBlockEntity(pos);
+            if (tileentity instanceof Container) {
+                Containers.dropContents(world, pos, (Container) tileentity);
             }
         }
         super.onRemove(state, world, pos, replacingState, bool);
@@ -376,7 +376,7 @@ public class CrateBlock extends ContainerBlock {
     }
 
     @Nullable
-    private HashMap<BlockPos, CrateType> checkConfigValid(IWorld world, BlockPos pos, CrateType type, int oldTicker) {
+    private HashMap<BlockPos, CrateType> checkConfigValid(LevelAccessor world, BlockPos pos, CrateType type, int oldTicker) {
         HashMap<BlockPos, CrateType> map = new HashMap<>();
         List<Direction> directions = getAttachDirectionsFromType(type);
         int[] integers = new int[]{0, 0, 0};
@@ -449,10 +449,10 @@ public class CrateBlock extends ContainerBlock {
 
     @Nullable
     @Override
-    public BlockState getStateForPlacement(BlockItemUseContext context) {
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockState state = super.getStateForPlacement(context);
         if (state != null) {
-            World world = context.getLevel();
+            Level world = context.getLevel();
             BlockPos pos = context.getClickedPos();
             CrateType type = CrateType.SMALL;
             if (context.canPlace()) {
@@ -464,7 +464,7 @@ public class CrateBlock extends ContainerBlock {
     }
 
     @Override
-    public void onPlace(BlockState state, World world, BlockPos pos, BlockState state1, boolean bool) {
+    public void onPlace(BlockState state, Level world, BlockPos pos, BlockState state1, boolean bool) {
         // detectCrateConfig(world, pos, createCrateArray(world, pos), true);
         super.onPlace(state, world, pos, state1, bool);
     }
@@ -473,32 +473,32 @@ public class CrateBlock extends ContainerBlock {
         return true;
     }
 
-    public int getAnalogOutputSignal(BlockState state, World world, BlockPos pos) {
+    public int getAnalogOutputSignal(BlockState state, Level world, BlockPos pos) {
 
         List<CrateTileEntity> tileList = new ArrayList<>(Collections.emptyList());
-        TileEntity tile = world.getBlockEntity(pos);
+        BlockEntity tile = world.getBlockEntity(pos);
         if (tile instanceof CrateTileEntity) {
             List<BlockPos> array = ((CrateTileEntity) tile).getCrateArray();
             if (array == null) {
                 array = CrateBlock.getCratePosList(world, pos);
             }
             for (BlockPos tempPos : array) {
-                TileEntity tempTile = world.getBlockEntity(tempPos);
+                 BlockEntity tempTile = world.getBlockEntity(tempPos);
                 if (tempTile instanceof CrateTileEntity)
                     tileList.add((CrateTileEntity) tempTile);
             }
         }
 
-        return !tileList.isEmpty() ? Container.getRedstoneSignalFromContainer(new MultiSidedInventory(tileList.toArray(new CrateTileEntity[0]))) : 0;
+        return !tileList.isEmpty() ? AbstractContainerMenu.getRedstoneSignalFromContainer(new MultiSidedInventory(tileList.toArray(new CrateTileEntity[0]))) : 0;
     }
 
     @Override
-    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(TYPE);
     }
 
     @Override
-    public BlockRenderType getRenderShape(BlockState state) {
-        return BlockRenderType.MODEL;
+    public RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
     }
 }

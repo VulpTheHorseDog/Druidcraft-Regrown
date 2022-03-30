@@ -1,22 +1,23 @@
 package com.vulp.druidcraftrg.blocks;
 
 import com.vulp.druidcraftrg.blocks.tile.RopeTileEntity;
-import net.minecraft.block.BlockState;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemUseContext;
-import net.minecraft.pathfinding.PathNodeType;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.Direction;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.IWorld;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
 
@@ -29,41 +30,36 @@ public class RopeBlock extends SixWayConnectBlock {
 
     @Nullable
     @Override
-    public PathNodeType getAiPathNodeType(BlockState state, IBlockReader world, BlockPos pos, @Nullable MobEntity entity) {
-        return PathNodeType.BLOCKED;
+    public BlockPathTypes getAiPathNodeType(BlockState state, BlockGetter world, BlockPos pos, @Nullable Mob entity) {
+        return BlockPathTypes.BLOCKED;
     }
 
     @Override
-    public boolean propagatesSkylightDown(BlockState state, IBlockReader reader, BlockPos pos) {
-        return true;
-    }
-
-    @Override
-    public boolean hasTileEntity(BlockState state) {
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter reader, BlockPos pos) {
         return true;
     }
 
     @Nullable
     @Override
-    public TileEntity createTileEntity(BlockState state, IBlockReader world) {
-        return new RopeTileEntity();
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new RopeTileEntity(pos, state);
     }
 
     // Tile entity safety check.
     @Override
-    public boolean triggerEvent(BlockState state, World world, BlockPos pos, int a, int b) {
+    public boolean triggerEvent(BlockState state, Level world, BlockPos pos, int a, int b) {
         super.triggerEvent(state, world, pos, a, b);
-        TileEntity tile = world.getBlockEntity(pos);
+        BlockEntity tile = world.getBlockEntity(pos);
         return tile != null && tile.triggerEvent(a, b);
     }
 
     @Override
-    public ActionResultType toggleIntersection(@Nullable PlayerEntity playerEntity, World world, BlockPos pos, ItemUseContext context) {
-        TileEntity tile = world.getBlockEntity(pos);
+    public InteractionResult toggleIntersection(@Nullable Player playerEntity, Level world, BlockPos pos, UseOnContext context) {
+        BlockEntity tile = world.getBlockEntity(pos);
         if (tile instanceof RopeTileEntity) {
             return ((RopeTileEntity) tile).forceToggle();
         }
-        else return ActionResultType.FAIL;
+        else return InteractionResult.FAIL;
     }
 
     @Override
@@ -72,7 +68,7 @@ public class RopeBlock extends SixWayConnectBlock {
     }
 
     @Override
-    public Connections connectInDirection(Direction direction, BlockState currentState, BlockPos currentPos, IWorld world) {
+    public Connections connectInDirection(Direction direction, BlockState currentState, BlockPos currentPos, LevelAccessor world) {
         BlockState dirState = world.getBlockState(currentPos.relative(direction));
         Direction opposite = direction.getOpposite();
         if (currentState.getValue(DIR_TO_PROPERTY_MAP.get(direction)) == Connections.CUT) {
@@ -94,10 +90,10 @@ public class RopeBlock extends SixWayConnectBlock {
 
     // Static check to be called for the entity itself.
     public static boolean isEntityInBlock(Entity entity) {
-        AxisAlignedBB axisalignedbb = entity.getBoundingBox();
+        AABB axisalignedbb = entity.getBoundingBox();
         BlockPos blockpos = new BlockPos(axisalignedbb.minX + 0.001D, axisalignedbb.minY + 0.001D, axisalignedbb.minZ + 0.001D);
         BlockPos blockpos1 = new BlockPos(axisalignedbb.maxX - 0.001D, axisalignedbb.maxY - 0.001D, axisalignedbb.maxZ - 0.001D);
-        BlockPos.Mutable blockpos$mutable = new BlockPos.Mutable();
+        BlockPos.MutableBlockPos blockpos$mutable = new BlockPos.MutableBlockPos();
         if (entity.level.hasChunksAt(blockpos, blockpos1)) {
             for (int i = blockpos.getX(); i <= blockpos1.getX(); ++i) {
                 for (int j = blockpos.getY(); j <= blockpos1.getY(); ++j) {
@@ -114,13 +110,13 @@ public class RopeBlock extends SixWayConnectBlock {
         return false;
     }
 
-    public void entityInside(BlockState state, World world, BlockPos pos, Entity entity) {
-        if (entity instanceof PlayerEntity) {
-            PlayerEntity player = (PlayerEntity) entity;
-            Vector3d movement = player.getDeltaMovement();
+    public void entityInside(BlockState state, Level world, BlockPos pos, Entity entity) {
+        if (entity instanceof Player) {
+            Player player = (Player) entity;
+            Vec3 movement = player.getDeltaMovement();
             player.fallDistance = 0.0F;
-            double d0 = MathHelper.clamp(movement.x, (double)-0.15F, (double)0.15F);
-            double d1 = MathHelper.clamp(movement.z, (double)-0.15F, (double)0.15F);
+            double d0 = Mth.clamp(movement.x, (double)-0.15F, (double)0.15F);
+            double d1 = Mth.clamp(movement.z, (double)-0.15F, (double)0.15F);
             double d2 = Math.max(movement.y, (double)-0.15F);
             double d3 = player.isOnGround() ? movement.x : 0.95F;
             double d4 = player.isOnGround() ? movement.z : 0.95F;
@@ -129,8 +125,13 @@ public class RopeBlock extends SixWayConnectBlock {
             } else if (!player.isShiftKeyDown() && d2 < 0.0D) {
                 d2 = 0.0D;
             }
-            player.setDeltaMovement(new Vector3d(player.isOnGround() ? movement.x : d0 * 0.95, d2, player.isOnGround() ? movement.z : d1 * 0.95));
+            player.setDeltaMovement(new Vec3(player.isOnGround() ? movement.x : d0 * 0.95, d2, player.isOnGround() ? movement.z : d1 * 0.95));
         }
+    }
+
+    @Override
+    public RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
     }
 
 }

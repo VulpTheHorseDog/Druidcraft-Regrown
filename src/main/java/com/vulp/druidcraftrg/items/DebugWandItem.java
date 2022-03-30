@@ -1,10 +1,10 @@
 package com.vulp.druidcraftrg.items;
 
 import com.vulp.druidcraftrg.DruidcraftRegrown;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemUseContext;
-import net.minecraft.util.ActionResultType;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 
 public class DebugWandItem extends Item {
 
@@ -13,7 +13,7 @@ public class DebugWandItem extends Item {
     }
 
     @Override
-    public ActionResultType onItemUseFirst(ItemStack stack, ItemUseContext context) {
+    public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
         DruidcraftRegrown.LOGGER.debug(context.getLevel().getBlockEntity(context.getClickedPos()));
         return super.onItemUseFirst(stack, context);
     }

@@ -1,34 +1,30 @@
 package com.vulp.druidcraftrg.blocks;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.IBucketPickupHandler;
-import net.minecraft.block.ILiquidContainer;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.fluid.Fluid;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.fluid.Fluids;
-import net.minecraft.item.BlockItemUseContext;
-import net.minecraft.item.ItemUseContext;
-import net.minecraft.state.BooleanProperty;
-import net.minecraft.state.DirectionProperty;
-import net.minecraft.state.StateContainer;
-import net.minecraft.state.properties.BlockStateProperties;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.Direction;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.shapes.ISelectionContext;
-import net.minecraft.util.math.shapes.VoxelShape;
-import net.minecraft.util.math.shapes.VoxelShapes;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.IWorld;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SimpleWaterloggedBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PlatformBlock extends Block implements IBucketPickupHandler, ILiquidContainer, IKnifeable {
+public class PlatformBlock extends Block implements SimpleWaterloggedBlock, IKnifeable {
 
     public static final BooleanProperty WALL = BooleanProperty.create("wall");
     public static final BooleanProperty OPEN = BlockStateProperties.OPEN;
@@ -46,24 +42,24 @@ public class PlatformBlock extends Block implements IBucketPickupHandler, ILiqui
     }
 
     @Override
-    public ActionResultType onKnifed(@Nullable PlayerEntity player, World world, BlockPos pos, BlockState state, ItemUseContext context) {
+    public InteractionResult onKnifed(@Nullable Player player, Level world, BlockPos pos, BlockState state, UseOnContext context) {
         world.setBlock(pos, state.setValue(OPEN, !state.getValue(OPEN)), 2);
-        return ActionResultType.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 
-    public VoxelShape getCollisionShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
-        if ((context.isAbove(VoxelShapes.block(), pos, true) && !context.isDescending()) || !state.getValue(OPEN)) {
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter reader, BlockPos pos, CollisionContext context) {
+        if ((context.isAbove(Shapes.block(), pos, true) && !context.isDescending()) || !state.getValue(OPEN)) {
             return getShape(state, reader, pos, context);
         } else {
-            return VoxelShapes.empty();
+            return Shapes.empty();
         }
     }
 
     @Override
-    public VoxelShape getShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter reader, BlockPos pos, CollisionContext context) {
         VoxelShape shape = SHAPES.get(null);
         if (state.getValue(WALL)) {
-            shape = VoxelShapes.or(shape, SHAPES.get(state.getValue(FACING)));
+            shape = Shapes.or(shape, SHAPES.get(state.getValue(FACING)));
         }
         return shape;
     }
@@ -79,65 +75,33 @@ public class PlatformBlock extends Block implements IBucketPickupHandler, ILiqui
     }
 
     @Override
-    public FluidState getFluidState(BlockState state) {
-        return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
-    }
-
-    @Override
-    public Fluid takeLiquid(IWorld world, BlockPos pos, BlockState state) {
-        if (state.getValue(WATERLOGGED)) {
-            world.setBlock(pos, state.setValue(WATERLOGGED, false), 3);
-            return Fluids.WATER;
-        } else {
-            return Fluids.EMPTY;
-        }
-    }
-
-    @Override
-    public boolean canPlaceLiquid(IBlockReader reader, BlockPos pos, BlockState state, Fluid fluid) {
-        return fluid == Fluids.WATER;
-    }
-
-    @Override
-    public boolean placeLiquid(IWorld world, BlockPos pos, BlockState blockState, FluidState fluidState) {
-        if (fluidState.getType() == Fluids.WATER) {
-            if (!world.isClientSide()) {
-                world.setBlock(pos, blockState.setValue(WATERLOGGED, true), 3);
-                world.getLiquidTicks().scheduleTick(pos, fluidState.getType(), fluidState.getType().getTickDelay(world));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public BlockState getStateForPlacement(BlockItemUseContext context) {
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockPos pos = context.getClickedPos();
-        World world = context.getLevel();
+        Level world = context.getLevel();
         Direction face = context.getClickedFace();
         BlockState clickedBlock = world.getBlockState(pos.relative(face.getOpposite()));
-        PlayerEntity player = context.getPlayer();
+        Player player = context.getPlayer();
         boolean cardinal = face != Direction.UP && face != Direction.DOWN;
-        return this.defaultBlockState().setValue(WALL, cardinal && clickedBlock.isFaceSturdy(world, pos, face)).setValue(OPEN, player == null || !player.isShiftKeyDown()).setValue(FACING, cardinal ? face : context.getHorizontalDirection().getOpposite()).setValue(WATERLOGGED, world.getFluidState(pos).getType() == Fluids.WATER);
+        return this.defaultBlockState().setValue(WALL, cardinal && clickedBlock.isFaceSturdy(world, pos, face)).setValue(OPEN, player == null || !player.isShiftKeyDown()).setValue(FACING, cardinal ? face : context.getHorizontalDirection().getOpposite());
     }
 
     @Override
-    public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, IWorld world, BlockPos currentPos, BlockPos facingPos) {
-        if (state.getValue(WATERLOGGED)) {
+    public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor world, BlockPos currentPos, BlockPos facingPos) {
+/*        if (state.getValue(WATERLOGGED)) {
             world.getLiquidTicks().scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
-        }
+        }*/
         Direction face = state.getValue(FACING);
         boolean wall = world.getBlockState(currentPos.relative(face.getOpposite())).isFaceSturdy(world, currentPos, face);
         return state.setValue(WALL, wall);
     }
 
     @Override
-    public boolean propagatesSkylightDown(BlockState p_200123_1_, IBlockReader p_200123_2_, BlockPos p_200123_3_) {
+    public boolean propagatesSkylightDown(BlockState p_200123_1_, BlockGetter p_200123_2_, BlockPos p_200123_3_) {
         return false;
     }
 
     @Override
-    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING, OPEN, WALL, WATERLOGGED);
     }
 

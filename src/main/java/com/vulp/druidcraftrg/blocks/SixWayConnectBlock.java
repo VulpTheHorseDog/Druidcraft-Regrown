@@ -1,39 +1,36 @@
 package com.vulp.druidcraftrg.blocks;
 
 import com.google.common.collect.Maps;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.IBucketPickupHandler;
-import net.minecraft.block.ILiquidContainer;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.fluid.Fluid;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.fluid.Fluids;
-import net.minecraft.item.BlockItemUseContext;
-import net.minecraft.item.ItemUseContext;
-import net.minecraft.state.BooleanProperty;
-import net.minecraft.state.EnumProperty;
-import net.minecraft.state.StateContainer;
-import net.minecraft.state.properties.BlockStateProperties;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.Direction;
-import net.minecraft.util.Util;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.shapes.ISelectionContext;
-import net.minecraft.util.math.shapes.VoxelShape;
-import net.minecraft.util.math.shapes.VoxelShapes;
-import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.IWorld;
-import net.minecraft.world.World;
+import net.minecraft.Util;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SimpleWaterloggedBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class SixWayConnectBlock extends Block implements IKnifeable, IBucketPickupHandler, ILiquidContainer {
+public abstract class SixWayConnectBlock extends BaseEntityBlock implements IKnifeable, SimpleWaterloggedBlock {
 
     public static final EnumProperty<Connections> NORTH = EnumProperty.create("north", Connections.class);
     public static final EnumProperty<Connections> EAST = EnumProperty.create("east", Connections.class);
@@ -65,17 +62,17 @@ public abstract class SixWayConnectBlock extends Block implements IKnifeable, IB
                 .setValue(WATERLOGGED, false));
     }
 
-    public abstract ActionResultType toggleIntersection(@Nullable PlayerEntity playerEntity, World world, BlockPos pos, ItemUseContext context);
+    public abstract InteractionResult toggleIntersection(@Nullable Player playerEntity, Level world, BlockPos pos, UseOnContext context);
 
     public abstract boolean canBeKnifed();
 
     @Override
-    public ActionResultType onKnifed(@Nullable PlayerEntity player, World world, BlockPos pos, BlockState state, ItemUseContext context) {
+    public InteractionResult onKnifed(@Nullable Player player, Level world, BlockPos pos, BlockState state, UseOnContext context) {
         if (this.canBeKnifed()) {
             if (player != null && player.isShiftKeyDown()) {
                 return this.toggleIntersection(player, world, pos, context);
             }
-            Vector3d vecRelative = context.getClickLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
+            Vec3 vecRelative = context.getClickLocation().subtract(pos.getX(), pos.getY(), pos.getZ());
             for (Map.Entry<Direction, VoxelShape> entry : SHAPE_ARRAY.entrySet()) {
                 if (collision(vecRelative, entry.getValue())) {
                     if (entry.getKey() == null) {
@@ -86,7 +83,7 @@ public abstract class SixWayConnectBlock extends Block implements IKnifeable, IB
                             Connections connection = this.connectInDirection(dir, state.setValue(property, Connections.NONE), pos, world);
                             if (connection != Connections.NONE) {
                                 world.setBlock(pos, state.setValue(property, connection), 2);
-                                return ActionResultType.SUCCESS;
+                                return InteractionResult.SUCCESS;
                             } else {
                                 flag = true;
                             }
@@ -97,21 +94,21 @@ public abstract class SixWayConnectBlock extends Block implements IKnifeable, IB
                             if (oppositeState.getBlock() == this && oppositeState.getValue(oppositeProperty) == Connections.CUT) {
                                 world.setBlock(pos, state.setValue(property, Connections.NORMAL), 2);
                                 world.setBlock(pos.relative(dir), oppositeState.setValue(oppositeProperty, Connections.NORMAL), 2);
-                                return ActionResultType.SUCCESS;
+                                return InteractionResult.SUCCESS;
                             }
                         }
-                        return ActionResultType.FAIL;
+                        return InteractionResult.FAIL;
                     } else {
                         world.setBlock(pos, state.setValue(DIR_TO_PROPERTY_MAP.get(entry.getKey()), Connections.CUT), 2);
-                        return ActionResultType.SUCCESS;
+                        return InteractionResult.SUCCESS;
                     }
                 }
             }
         }
-        return ActionResultType.FAIL;
+        return InteractionResult.FAIL;
     }
 
-    public static boolean collision(Vector3d vec, VoxelShape shape) {
+    public static boolean collision(Vec3 vec, VoxelShape shape) {
         return shape.bounds().minX <= vec.x && shape.bounds().minY <= vec.y && shape.bounds().minZ <= vec.z && shape.bounds().maxX >= vec.x && shape.bounds().maxY >= vec.y && shape.bounds().maxZ >= vec.z;
     }
 
@@ -126,61 +123,25 @@ public abstract class SixWayConnectBlock extends Block implements IKnifeable, IB
     }
 
     @Override
-    public FluidState getFluidState(BlockState state) {
-        return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
-    }
-
-    @Override
-    public Fluid takeLiquid(IWorld world, BlockPos pos, BlockState state) {
-        if (state.getValue(WATERLOGGED)) {
-            world.setBlock(pos, state.setValue(WATERLOGGED, false), 3);
-            return Fluids.WATER;
-        } else {
-            return Fluids.EMPTY;
-        }
-    }
-
-    @Override
-    public boolean canPlaceLiquid(IBlockReader reader, BlockPos pos, BlockState state, Fluid fluid) {
-        return fluid == Fluids.WATER;
-    }
-
-    @Override
-    public boolean placeLiquid(IWorld world, BlockPos pos, BlockState blockState, FluidState fluidState) {
-        if (fluidState.getType() == Fluids.WATER) {
-            if (!world.isClientSide()) {
-                world.setBlock(pos, blockState.setValue(WATERLOGGED, true), 3);
-                world.getLiquidTicks().scheduleTick(pos, fluidState.getType(), fluidState.getType().getTickDelay(world));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public BlockState getStateForPlacement(BlockItemUseContext context) {
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockPos pos = context.getClickedPos();
-        World world = context.getLevel();
-        FluidState fluidstate = world.getFluidState(pos);
+        Level world = context.getLevel();
         BlockState state = this.defaultBlockState();
         for (Map.Entry<Direction, EnumProperty<Connections>> entry : DIR_TO_PROPERTY_MAP.entrySet()) {
             state = state.setValue(entry.getValue(), connectInDirection(entry.getKey(), state, pos, world));
         }
-        return state.setValue(WATERLOGGED, fluidstate.getType() == Fluids.WATER);
+        return state;
     }
 
     @Override
-    public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, IWorld world, BlockPos currentPos, BlockPos facingPos) {
-        if (state.getValue(WATERLOGGED)) {
-            world.getLiquidTicks().scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
-        }
+    public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor world, BlockPos currentPos, BlockPos facingPos) {
         for (Map.Entry<Direction, EnumProperty<Connections>> entry : DIR_TO_PROPERTY_MAP.entrySet()) {
             state = state.setValue(entry.getValue(), connectInDirection(entry.getKey(), state, currentPos, world));
         }
         return state;
     }
 
-    public Connections connectInDirection(Direction direction, BlockState currentState, BlockPos currentPos, IWorld world) {
+    public Connections connectInDirection(Direction direction, BlockState currentState, BlockPos currentPos, LevelAccessor world) {
         BlockState dirState = world.getBlockState(currentPos.relative(direction));
         Direction opposite = direction.getOpposite();
         if (currentState.getValue(DIR_TO_PROPERTY_MAP.get(direction)) == Connections.CUT) {
@@ -192,18 +153,18 @@ public abstract class SixWayConnectBlock extends Block implements IKnifeable, IB
     }
 
     @Override
-    public boolean propagatesSkylightDown(BlockState state, IBlockReader reader, BlockPos pos) {
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter reader, BlockPos pos) {
         return false;
     }
 
     @Override
-    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> builder) {
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN, WATERLOGGED);
     }
 
     private Map<Direction, VoxelShape> createShapes(double branchRadius, double centerRadius) {
-        centerRadius = MathHelper.clamp(centerRadius, 0.0D, 8.0D);
-        branchRadius = MathHelper.clamp(branchRadius, 0.0D, 8.0D);
+        centerRadius = Mth.clamp(centerRadius, 0.0D, 8.0D);
+        branchRadius = Mth.clamp(branchRadius, 0.0D, 8.0D);
         double a = 8.0D - centerRadius;
         double b = 8.0D + centerRadius;
         double c = 8.0D - branchRadius;
@@ -220,11 +181,11 @@ public abstract class SixWayConnectBlock extends Block implements IKnifeable, IB
     }
 
     @Override
-    public VoxelShape getShape(BlockState state, IBlockReader worldIn, BlockPos pos, ISelectionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter worldIn, BlockPos pos, CollisionContext context) {
         VoxelShape shape = SHAPE_ARRAY.get(null);
         for (Map.Entry<Direction, EnumProperty<Connections>> entry : DIR_TO_PROPERTY_MAP.entrySet()) {
             if (state.getValue(entry.getValue()) == Connections.NORMAL) {
-                shape = VoxelShapes.or(shape, SHAPE_ARRAY.get(entry.getKey()));
+                shape = Shapes.or(shape, SHAPE_ARRAY.get(entry.getKey()));
             }
         }
         return shape;

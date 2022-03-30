@@ -1,18 +1,19 @@
 package com.vulp.druidcraftrg.items;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.item.BlockItemUseContext;
-import net.minecraft.item.BlockNamedItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemNameBlockItem;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
-public class DoubleCropSeedItem extends BlockNamedItem {
+public class DoubleCropSeedItem extends ItemNameBlockItem {
 
-    public DoubleCropSeedItem(Block block, Properties properties) {
+    public DoubleCropSeedItem(Block block, Item.Properties properties) {
         super(block, properties);
     }
 
     @Override
-    protected boolean canPlace(BlockItemUseContext context, BlockState state) {
+    protected boolean canPlace(BlockPlaceContext context, BlockState state) {
         return super.canPlace(context, state) && context.getLevel().getBlockState(context.getClickedPos().below()).getBlock() != this.getBlock();
     }
 }

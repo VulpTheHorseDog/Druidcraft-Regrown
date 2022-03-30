@@ -1,13 +1,13 @@
 package com.vulp.druidcraftrg.init;
 
 import com.vulp.druidcraftrg.inventory.container.CrateContainer;
-import net.minecraft.inventory.container.ContainerType;
+import net.minecraft.world.inventory.MenuType;
 
 public class ContainerInit {
 
-    public static ContainerType<CrateContainer> CRATE_9x3 = new ContainerType<>(CrateContainer::singleCrate);
-    public static ContainerType<CrateContainer> CRATE_9x6 = new ContainerType<>(CrateContainer::doubleCrate);
-    public static ContainerType<CrateContainer> CRATE_9x12 = new ContainerType<>(CrateContainer::quadCrate);
-    public static ContainerType<CrateContainer> CRATE_9x24 = new ContainerType<>(CrateContainer::octoCrate);
+    public static MenuType<CrateContainer> CRATE_9x3 = new MenuType<>(CrateContainer::singleCrate);
+    public static MenuType<CrateContainer> CRATE_9x6 = new MenuType<>(CrateContainer::doubleCrate);
+    public static MenuType<CrateContainer> CRATE_9x12 = new MenuType<>(CrateContainer::quadCrate);
+    public static MenuType<CrateContainer> CRATE_9x24 = new MenuType<>(CrateContainer::octoCrate);
 
 }

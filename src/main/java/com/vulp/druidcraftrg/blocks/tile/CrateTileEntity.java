@@ -1,32 +1,33 @@
 package com.vulp.druidcraftrg.blocks.tile;
 
-import com.vulp.druidcraftrg.DruidcraftRegrown;
 import com.vulp.druidcraftrg.blocks.CrateBlock;
-import com.vulp.druidcraftrg.init.TileInit;
+import com.vulp.druidcraftrg.init.BlockEntityInit;
 import com.vulp.druidcraftrg.inventory.MultiSidedInventory;
 import com.vulp.druidcraftrg.inventory.container.CrateContainer;
 import com.vulp.druidcraftrg.state.properties.CrateType;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.ChestBlock;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.DoubleSidedInventory;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.ItemStackHelper;
-import net.minecraft.inventory.container.ChestContainer;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.state.properties.ChestType;
-import net.minecraft.tileentity.*;
-import net.minecraft.util.*;
-import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.Container;
+import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.CapabilityItemHandler;
@@ -37,7 +38,7 @@ import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.List;
 
-public class CrateTileEntity extends LockableLootTileEntity implements ITickableTileEntity {
+public class CrateTileEntity extends RandomizableContainerBlockEntity {
 
     private NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
     protected int lastOpenCount = 0;
@@ -46,31 +47,30 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     private LazyOptional<IItemHandlerModifiable> crateHandler;
     private List<BlockPos> crateArray;
 
-    protected CrateTileEntity(TileEntityType<?> tileEntityType) {
-        super(tileEntityType);
+    protected CrateTileEntity(BlockEntityType<?> blockEntityType, BlockPos pos, BlockState state) {
+        super(blockEntityType, pos, state);
     }
 
-    public CrateTileEntity() {
-        super(TileInit.crate);
+    public CrateTileEntity(BlockPos pos, BlockState state) {
+        super(BlockEntityInit.crate, pos, state);
     }
 
-    @Override
-    public void tick() {
-        int x = this.worldPosition.getX();
-        int y = this.worldPosition.getY();
-        int z = this.worldPosition.getZ();
-        ++this.tickInterval;
-        boolean wasOpen = this.lastOpenCount > 0;
-        this.openCount = getOpenCount(this.level, this, this.tickInterval, x, y, z, this.openCount);
-        if (!wasOpen && this.openCount > 0) {
-            this.playSound(SoundEvents.CHEST_OPEN);
-        } else if (wasOpen && this.openCount == 0) {
-            this.playSound(SoundEvents.CHEST_CLOSE);
+    public static void serverTick(Level level, BlockPos pos, BlockState state, CrateTileEntity blockEntity) {
+        int x = blockEntity.worldPosition.getX();
+        int y = blockEntity.worldPosition.getY();
+        int z = blockEntity.worldPosition.getZ();
+        ++blockEntity.tickInterval;
+        boolean wasOpen = blockEntity.lastOpenCount > 0;
+        blockEntity.openCount = getOpenCount(blockEntity.level, blockEntity, blockEntity.tickInterval, x, y, z, blockEntity.openCount);
+        if (!wasOpen && blockEntity.openCount > 0) {
+            blockEntity.playSound(SoundEvents.CHEST_OPEN);
+        } else if (wasOpen && blockEntity.openCount == 0) {
+            blockEntity.playSound(SoundEvents.CHEST_CLOSE);
         }
-        this.lastOpenCount = this.openCount;
+        blockEntity.lastOpenCount = blockEntity.openCount;
     }
 
-    public static int getOpenCount(World world, LockableTileEntity tile, int tickInterval, int xPos, int yPos, int zPos, int openCount) {
+    public static int getOpenCount(Level world, RandomizableContainerBlockEntity tile, int tickInterval, int xPos, int yPos, int zPos, int openCount) {
         if (!world.isClientSide && openCount != 0 && (tickInterval + xPos + yPos + zPos) % 200 == 0) {
             openCount = getOpenCount(world, tile, xPos, yPos, zPos);
         }
@@ -78,12 +78,12 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
         return openCount;
     }
 
-    public static int getOpenCount(World world, LockableTileEntity tile, int xPos, int yPos, int zPos) {
+    public static int getOpenCount(Level world, RandomizableContainerBlockEntity tile, int xPos, int yPos, int zPos) {
         int ticker = 0;
         float i = 5.0F;
-        for(PlayerEntity playerentity : world.getEntitiesOfClass(PlayerEntity.class, new AxisAlignedBB((float)xPos - i, (float)yPos - i, (float)zPos - i, (float)(xPos + 1) + i, (float)(yPos + 1) + i, (float)(zPos + 1) + i))) {
+        for(Player playerentity : world.getEntitiesOfClass(Player.class, new AABB((float)xPos - i, (float)yPos - i, (float)zPos - i, (float)(xPos + 1) + i, (float)(yPos + 1) + i, (float)(zPos + 1) + i))) {
             if (playerentity.containerMenu instanceof CrateContainer) {
-                IInventory iinventory = ((CrateContainer)playerentity.containerMenu).getContainer();
+                Container iinventory = ((CrateContainer)playerentity.containerMenu).getContainer();
                 if (iinventory == tile || iinventory instanceof MultiSidedInventory && ((MultiSidedInventory)iinventory).contains(tile)) {
                     ++ticker;
                 }
@@ -103,7 +103,7 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
             double d0 = (double)this.worldPosition.getX() + 0.5D + ((float)integers[0] / 2);
             double d1 = (double)this.worldPosition.getY() + 0.5D + ((float)integers[1] / 2);
             double d2 = (double)this.worldPosition.getZ() + 0.5D + ((float)integers[2] / 2);
-            this.level.playSound(null, d0, d1, d2, soundEvent, SoundCategory.BLOCKS, 0.5F, (this.level.random.nextFloat() * 0.1F + 0.9F) * (1.05F - 0.05F * (float) crateType.getCrateSize()));
+            this.level.playSound(null, d0, d1, d2, soundEvent, SoundSource.BLOCKS, 0.5F, (this.level.random.nextFloat() * 0.1F + 0.9F) * (1.05F - 0.05F * (float) crateType.getCrateSize()));
         }
     }
 
@@ -118,7 +118,7 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     }
 
     @Override
-    public void startOpen(PlayerEntity player) {
+    public void startOpen(Player player) {
         if (!player.isSpectator()) {
             if (this.openCount < 0) {
                 this.openCount = 0;
@@ -129,7 +129,7 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     }
 
     @Override
-    public void stopOpen(PlayerEntity player) {
+    public void stopOpen(Player player) {
         if (!player.isSpectator()) {
             --this.openCount;
             this.signalOpenCount();
@@ -145,22 +145,20 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
 
     }
 
-    public void load(BlockState state, CompoundNBT nbt) {
-        super.load(state, nbt);
+    public void load(CompoundTag nbt) {
+        super.load(nbt);
         this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
         if (!this.tryLoadLootTable(nbt)) {
-            ItemStackHelper.loadAllItems(nbt, this.items);
+            ContainerHelper.loadAllItems(nbt, this.items);
         }
 
     }
 
-    public CompoundNBT save(CompoundNBT nbt) {
-        super.save(nbt);
+    public void saveAdditional(CompoundTag nbt) {
+        super.saveAdditional(nbt);
         if (!this.trySaveLootTable(nbt)) {
-            ItemStackHelper.saveAllItems(nbt, this.items);
+            ContainerHelper.saveAllItems(nbt, this.items);
         }
-
-        return nbt;
     }
 
     @Override
@@ -173,10 +171,10 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
         this.items = p_199721_1_;
     }
 
-    public static int getOpenCount(IBlockReader reader, BlockPos pos) {
+    public static int getOpenCount(BlockGetter reader, BlockPos pos) {
         BlockState blockstate = reader.getBlockState(pos);
-        if (blockstate.hasTileEntity()) {
-            TileEntity tileentity = reader.getBlockEntity(pos);
+        if (blockstate.hasBlockEntity()) {
+            BlockEntity tileentity = reader.getBlockEntity(pos);
             if (tileentity instanceof CrateTileEntity) {
                 return ((CrateTileEntity)tileentity).openCount;
             }
@@ -192,13 +190,13 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     }
 
     @Override
-    protected Container createMenu(int containerCounter, PlayerInventory playerInventory) {
+    protected AbstractContainerMenu createMenu(int containerCounter, Inventory playerInventory) {
         return CrateContainer.singleCrate(containerCounter, playerInventory, this);
     }
 
     @Override
-    public void clearCache() {
-        super.clearCache();
+    public void clearContent() {
+        super.clearContent();
         if (this.crateHandler != null) {
             LazyOptional<?> oldHandler = this.crateHandler;
             this.crateHandler = null;
@@ -241,7 +239,7 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
                 tileList[i] = (CrateTileEntity) this.level.getBlockEntity(crateArray.get(i));
             }
         }
-        IInventory inv = new MultiSidedInventory(tileList); //ChestBlock.getContainer((ChestBlock) state.getBlock(), state, getLevel(), getBlockPos(), true);
+        Container inv = new MultiSidedInventory(tileList); //ChestBlock.getContainer((ChestBlock) state.getBlock(), state, getLevel(), getBlockPos(), true);
         return new InvWrapper(inv);
     }
 
@@ -261,7 +259,7 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     }*/
 
     @Override
-    protected void invalidateCaps() {
+    public void invalidateCaps() {
         super.invalidateCaps();
         if (crateHandler != null)
             crateHandler.invalidate();
@@ -272,13 +270,13 @@ public class CrateTileEntity extends LockableLootTileEntity implements ITickable
     }
 
     @Override
-    public boolean stillValid(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         return this.level != null && (!(this.level.getBlockState(this.worldPosition).getBlock() instanceof CrateBlock) || CrateBlock.isCrateConfigValid(this.level, CrateBlock.getCratePosList(this.level, this.worldPosition))) && super.stillValid(player);
     }
 
     @Override
-    protected ITextComponent getDefaultName() {
-        return new TranslationTextComponent("container.druidcraftrg.crate");
+    protected Component getDefaultName() {
+        return new TranslatableComponent("container.druidcraftrg.crate");
     }
 
     @Override
