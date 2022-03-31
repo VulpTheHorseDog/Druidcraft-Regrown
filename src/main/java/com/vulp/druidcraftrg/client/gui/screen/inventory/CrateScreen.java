@@ -243,7 +243,7 @@ public class CrateScreen extends AbstractContainerScreen<CrateContainer> impleme
         // The split here sorts out some weird rendering with the items. I have no clue how rendering works, so for now this works as a messy fix.
 
 
-        
+
         RenderSystem.disableDepthTest();
         // super.render(poseStack, mouseX, mouseY, delta);
         mainPose.pushPose();
@@ -334,6 +334,92 @@ public class CrateScreen extends AbstractContainerScreen<CrateContainer> impleme
         RenderSystem.enableDepthTest();
 
         this.renderTooltip(poseStack, mouseX, mouseY);
+
+        // TODO: You haven't touched this code, just split it into chunks and attempted to split the slots into two, which you commented a better way of doing.
+        // Split between old code and fresh code:
+        if (!true) {
+            this.renderBg(poseStack, delta, mouseX, mouseY);
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ContainerScreenEvent.DrawBackground(this, poseStack, mouseX, mouseY));
+            RenderSystem.disableDepthTest();
+            super.render(poseStack, mouseX, mouseY, delta);
+            PoseStack posestack = RenderSystem.getModelViewStack();
+            posestack.pushPose();
+            posestack.translate((double)i, (double)j, 0.0D);
+            RenderSystem.applyModelViewMatrix();
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+            this.hoveredSlot = null;
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+            List<Slot> playerSlots = new java.util.ArrayList<>(Collections.emptyList());
+            List<Slot> crateSlots = new java.util.ArrayList<>(Collections.emptyList());
+            // Don't do this! Do a check regarding how many rows container has, and judge slots off of that.
+            for (Slot slot : this.menu.slots) {
+                if (slot.container instanceof InventoryMenu) {
+                    playerSlots.add(slot);
+                } else {
+                    crateSlots.add(slot);
+                }
+            }
+            // RENDER SLOTS AND THE HIGHLIGHTS IF APPLICABLE -----------------------------------------------------------
+            for(int k = 0; k < this.menu.slots.size(); ++k) {
+                Slot slot = this.menu.slots.get(k);
+                if (slot.isActive()) {
+                    RenderSystem.setShader(GameRenderer::getPositionTexShader);
+                    this.renderSlot(poseStack, slot);
+                }
+
+                if (this.isHovering(slot, (double)mouseX, (double)mouseY) && slot.isActive()) {
+                    this.hoveredSlot = slot;
+                    int l = slot.x;
+                    int i1 = slot.y;
+                    renderSlotHighlight(poseStack, l, i1, this.getBlitOffset(), this.getSlotColor(k));
+                }
+            }
+            // ---------------------------------------------------------------------------------------------------------
+
+            // Rendering of inventory titles ---------------------------------------------------------------------------
+            this.renderLabels(poseStack, mouseX, mouseY);
+            // ---------------------------------------------------------------------------------------------------------
+
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.ContainerScreenEvent.DrawForeground(this, poseStack, mouseX, mouseY));
+            // Renders the currently mouse-held stack ------------------------------------------------------------------
+            ItemStack currentStack = this.draggingItem.isEmpty() ? this.menu.getCarried() : this.draggingItem;
+            if (!currentStack.isEmpty()) {
+                int l1 = 8;
+                int i2 = this.draggingItem.isEmpty() ? 8 : 16;
+                String s = null;
+                if (!this.draggingItem.isEmpty() && this.isSplittingStack) {
+                    currentStack = currentStack.copy();
+                    currentStack.setCount(Mth.ceil((float)currentStack.getCount() / 2.0F));
+                } else if (this.isQuickCrafting && this.quickCraftSlots.size() > 1) {
+                    currentStack = currentStack.copy();
+                    currentStack.setCount(this.quickCraftingRemainder);
+                    if (currentStack.isEmpty()) {
+                        s = ChatFormatting.YELLOW + "0";
+                    }
+                }
+
+                this.renderFloatingItem(currentStack, mouseX - i - 8, mouseY - j - i2, s);
+            }
+            if (!this.snapbackItem.isEmpty()) {
+                float f = (float)(Util.getMillis() - this.snapbackTime) / 100.0F;
+                if (f >= 1.0F) {
+                    f = 1.0F;
+                    this.snapbackItem = ItemStack.EMPTY;
+                }
+
+                int j2 = this.snapbackEnd.x - this.snapbackStartX;
+                int k2 = this.snapbackEnd.y - this.snapbackStartY;
+                int j1 = this.snapbackStartX + (int)((float)j2 * f);
+                int k1 = this.snapbackStartY + (int)((float)k2 * f);
+                this.renderFloatingItem(this.snapbackItem, j1, k1, (String)null);
+            }
+            // ---------------------------------------------------------------------------------------------------------
+
+            posestack.popPose();
+            RenderSystem.applyModelViewMatrix();
+            RenderSystem.enableDepthTest();
+        }
+
     }
 
     protected void renderLabels(PoseStack poseStack, int p_230451_2_, int p_230451_3_) {

@@ -13,15 +13,13 @@ import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-@OnlyIn(Dist.CLIENT)
-@Mod.EventBusSubscriber(modid=DruidcraftRegrown.MODID, bus=Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid=DruidcraftRegrown.MODID, value=Dist.CLIENT, bus=Mod.EventBusSubscriber.Bus.MOD)
 public class SetupRenderers {
 
     public static void setup(FMLClientSetupEvent event) {
@@ -39,11 +37,6 @@ public class SetupRenderers {
         MenuScreens.register(ContainerInit.CRATE_9x12, CrateScreen::new);
         MenuScreens.register(ContainerInit.CRATE_9x24, CrateScreen::new);
 
-/*        ForgeHooksClient.registerLayerDefinition(ModelLayerInit.BEAM_ROPE_LAYER, BeamRopeRenderer.BeamRopeModel::buildModel);
-        ForgeHooksClient.registerLayerDefinition(ModelLayerInit.ROPE_KNOT_LAYER, RopeKnotRenderer.RopeKnotModel::buildModel);
-
-        BlockEntityRenderers.register(BlockEntityInit.beam, BeamRopeRenderer::new);
-        BlockEntityRenderers.register(BlockEntityInit.rope, RopeKnotRenderer::new);*/
     }
 
     public static void textureStitching(TextureStitchEvent.Pre event) {

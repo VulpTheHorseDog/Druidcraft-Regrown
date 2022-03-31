@@ -23,7 +23,6 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.Material;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
 import net.minecraftforge.event.RegistryEvent;
@@ -86,14 +85,6 @@ public class DruidcraftRegrownRegistry {
         );
 
         DruidcraftRegrown.LOGGER.info("Blocks Registered!");
-    }
-
-    // MODEL REGISTRATION!
-    @SubscribeEvent
-    @OnlyIn(Dist.CLIENT)
-    public static void modelRegistryEvent(ModelRegistryEvent event) {
-
-        DruidcraftRegrown.LOGGER.info("Models Registered!");
     }
 
     // TILE REGISTRATION!
