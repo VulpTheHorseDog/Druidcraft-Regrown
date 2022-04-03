@@ -1,0 +1,17 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "  O",
+		" O ",
+		"_  "
+    ],
+    "key": {
+        "O": {
+            "item": "minecraft:flint"
+        },
+		"_": {
+			"item": "minecraft:stick"
+		}
+    },
+    "result": { "item": "druidcraftrg:knife", "count": 1 }
+}

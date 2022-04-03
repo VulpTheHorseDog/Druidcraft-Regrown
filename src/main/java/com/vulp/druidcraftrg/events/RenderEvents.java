@@ -18,7 +18,7 @@ public class RenderEvents {
     @SubscribeEvent
     public static void renderPlayerEventPre(RenderPlayerEvent.Pre event) {
         Player player = event.getPlayer();
-        if (player.isSleeping() && event.getPlayer().level.getBlockState(player.getSleepingPos().get()).getBlock() instanceof BedrollBlock) {
+        if (player.isSleeping() && player.level.getBlockState(player.getSleepingPos().get()).getBlock() instanceof BedrollBlock) {
             HumanoidModel<AbstractClientPlayer> model = event.getRenderer().getModel();
             model.setAllVisible(false);
             model.head.visible = true;

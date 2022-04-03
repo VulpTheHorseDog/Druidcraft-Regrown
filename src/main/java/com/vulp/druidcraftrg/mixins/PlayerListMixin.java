@@ -10,15 +10,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.biome.BiomeManager;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
@@ -51,7 +45,6 @@ public abstract class PlayerListMixin {
     @Inject(at = @At("HEAD"), method = "respawn", cancellable = true)
     private void respawn(ServerPlayer player, boolean bool, CallbackInfoReturnable<ServerPlayer> cir) {
         Optional<TempSpawnCapability> spawnData = player.getCapability(TempSpawnProvider.TEMP_SPAWN_CAPABILITY).resolve();
-        // For some reason the second time you try and respawn, the below if statement is not passed. Because the capability returns null. Likely because of the janky capability handling in the first place.
         if (spawnData.isPresent() && spawnData.get().hasSpawnData()) {
             SpawnDataHolder holder = spawnData.get().getSpawnData();
             ServerLevel ServerLevel = this.server.getLevel(holder.getDimension());
@@ -60,16 +53,16 @@ public abstract class PlayerListMixin {
                 player.getLevel().removePlayerImmediately(player, Entity.RemovalReason.DISCARDED);
                 float angle = holder.getAngle();
                 BlockPos pos = holder.getPos();
-                boolean flag = player.isRespawnForced();
-                ServerLevel serverlevel = this.server.getLevel(player.getRespawnDimension());
+                boolean flag = holder.isForced();
+                ServerLevel playerRespawnLevel = this.server.getLevel(player.getRespawnDimension());
                 Optional<Vec3> optional;
-                if (serverlevel != null && pos != null) {
-                    optional = Player.findRespawnPositionAndUseSpawnBlock(serverlevel, pos, angle, flag, bool);
+                if (playerRespawnLevel != null && pos != null) {
+                    optional = Player.findRespawnPositionAndUseSpawnBlock(playerRespawnLevel, pos, angle, flag, bool);
                 } else {
                     optional = Optional.empty();
                 }
 
-                ServerLevel serverlevel1 = serverlevel != null && optional.isPresent() ? serverlevel : this.server.overworld();
+                ServerLevel serverlevel1 = playerRespawnLevel != null && optional.isPresent() ? playerRespawnLevel : this.server.overworld();
                 ServerPlayer serverplayer = new ServerPlayer(this.server, serverlevel1, player.getGameProfile());
                 serverplayer.connection = player.connection;
                 serverplayer.restoreFrom(player, bool);
@@ -80,24 +73,13 @@ public abstract class PlayerListMixin {
                     serverplayer.addTag(s);
                 }
 
-                boolean flag2 = false;
                 if (optional.isPresent()) {
-                    BlockState blockstate = serverlevel1.getBlockState(pos);
-                    boolean flag1 = blockstate.is(Blocks.RESPAWN_ANCHOR);
                     Vec3 vec3 = optional.get();
-                    float f1;
-                    if (!blockstate.is(BlockTags.BEDS) && !flag1) {
-                        f1 = angle;
-                    } else {
-                        Vec3 vec31 = Vec3.atBottomCenterOf(pos).subtract(vec3).normalize();
-                        f1 = (float) Mth.wrapDegrees(Mth.atan2(vec31.z, vec31.x) * (double) (180F / (float) Math.PI) - 90.0D);
-                    }
-
-                    serverplayer.moveTo(vec3.x, vec3.y, vec3.z, f1, 0.0F);
-                    serverplayer.setRespawnPosition(serverlevel1.dimension(), pos, angle, flag, false);
-                    flag2 = !bool && flag1;
+                    serverplayer.moveTo(vec3.x, vec3.y, vec3.z, angle, 0.0F);
+                    serverplayer.setRespawnPosition(player.getRespawnDimension(), player.getRespawnPosition(), player.getRespawnAngle(), player.isRespawnForced(), false);
+                    // Carry the temp spawn data from old player to repawned player.
                     Optional<TempSpawnCapability> tempSpawnNew = serverplayer.getCapability(TempSpawnProvider.TEMP_SPAWN_CAPABILITY).resolve();
-                    tempSpawnNew.ifPresent(iTempSpawn -> iTempSpawn.setSpawnData(holder));
+                    tempSpawnNew.ifPresent(tempSpawn -> tempSpawn.setSpawnData(holder));
                 } else if (pos != null) {
                     serverplayer.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0.0F));
                 }
@@ -120,9 +102,6 @@ public abstract class PlayerListMixin {
                 serverplayer.initInventoryMenu();
                 serverplayer.setHealth(serverplayer.getHealth());
                 net.minecraftforge.event.ForgeEventFactory.firePlayerRespawnEvent(serverplayer, bool);
-                if (flag2) {
-                    serverplayer.connection.send(new ClientboundSoundPacket(SoundEvents.RESPAWN_ANCHOR_DEPLETE, SoundSource.BLOCKS, (double) pos.getX(), (double) pos.getY(), (double) pos.getZ(), 1.0F, 1.0F));
-                }
 
                 cir.setReturnValue(serverplayer);
             } else {

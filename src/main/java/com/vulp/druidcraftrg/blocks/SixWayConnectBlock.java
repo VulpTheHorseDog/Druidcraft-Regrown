@@ -20,6 +20,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -130,11 +132,14 @@ public abstract class SixWayConnectBlock extends BaseEntityBlock implements IKni
         for (Map.Entry<Direction, EnumProperty<Connections>> entry : DIR_TO_PROPERTY_MAP.entrySet()) {
             state = state.setValue(entry.getValue(), connectInDirection(entry.getKey(), state, pos, world));
         }
-        return state;
+        return state.setValue(WATERLOGGED, world.getFluidState(pos).getType() == Fluids.WATER);
     }
 
     @Override
     public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor world, BlockPos currentPos, BlockPos facingPos) {
+        if (state.getValue(WATERLOGGED)) {
+            world.scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
+        }
         for (Map.Entry<Direction, EnumProperty<Connections>> entry : DIR_TO_PROPERTY_MAP.entrySet()) {
             state = state.setValue(entry.getValue(), connectInDirection(entry.getKey(), state, currentPos, world));
         }
@@ -160,6 +165,11 @@ public abstract class SixWayConnectBlock extends BaseEntityBlock implements IKni
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN, WATERLOGGED);
+    }
+
+    @Override
+    public FluidState getFluidState(BlockState state) {
+        return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
     }
 
     private Map<Direction, VoxelShape> createShapes(double branchRadius, double centerRadius) {

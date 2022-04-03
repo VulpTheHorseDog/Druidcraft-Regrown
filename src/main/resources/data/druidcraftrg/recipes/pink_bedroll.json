@@ -1,0 +1,16 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "###",
+		"WWW"
+    ],
+    "key": {
+        "#": {
+            "item": "minecraft:pink_wool"
+        },
+		"W": {
+            "item": "druidcraftrg:hemp"
+        }
+    },
+    "result": { "item": "druidcraftrg:pink_bedroll", "count": 1 }
+}

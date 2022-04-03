@@ -68,6 +68,16 @@ public class RopeBlock extends SixWayConnectBlock {
     }
 
     @Override
+    public int getFlammability(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 60;
+    }
+
+    @Override
+    public int getFireSpreadSpeed(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 30;
+    }
+
+    @Override
     public Connections connectInDirection(Direction direction, BlockState currentState, BlockPos currentPos, LevelAccessor world) {
         BlockState dirState = world.getBlockState(currentPos.relative(direction));
         Direction opposite = direction.getOpposite();

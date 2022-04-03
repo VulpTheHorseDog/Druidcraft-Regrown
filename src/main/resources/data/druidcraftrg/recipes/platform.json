@@ -1,0 +1,16 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "##",
+		"#_"
+    ],
+    "key": {
+        "#": {
+            "tag": "minecraft:planks"
+        },
+		"_": {
+			"item": "minecraft:stick"
+		}
+    },
+    "result": { "item": "druidcraftrg:platform", "count": 3 }
+}

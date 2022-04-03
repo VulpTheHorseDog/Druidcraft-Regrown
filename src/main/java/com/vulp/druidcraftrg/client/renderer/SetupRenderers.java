@@ -28,7 +28,7 @@ public class SetupRenderers {
         event.enqueueWork(() -> {
             ItemBlockRenderTypes.setRenderLayer(BlockInit.hemp_crop, RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(BlockInit.rope, RenderType.cutout());
-            ItemBlockRenderTypes.setRenderLayer(BlockInit.platform, RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(BlockInit.spruce_platform, RenderType.cutout());
         });
 
         // SCREENS

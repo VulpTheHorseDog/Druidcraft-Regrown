@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -177,26 +178,41 @@ public class BeamBlock extends BaseEntityBlock implements SimpleWaterloggedBlock
         return false;
     }
 
+    @Override
+    public int getFlammability(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 20;
+    }
+
+    @Override
+    public int getFireSpreadSpeed(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 5;
+    }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         BlockPos pos = context.getClickedPos();
         Level world = context.getLevel();
         Direction.Axis facing = context.getClickedFace().getAxis();
-        return this.defaultBlockState().setValue(X_AXIS, facing == Direction.Axis.X || this.shouldConnectOnAxis(world, pos, Direction.Axis.X)).setValue(Y_AXIS, facing == Direction.Axis.Y || this.shouldConnectOnAxis(world, pos, Direction.Axis.Y)).setValue(Z_AXIS, facing == Direction.Axis.Z || this.shouldConnectOnAxis(world, pos, Direction.Axis.Z)).setValue(DEFAULT_AXIS, facing).setValue(WATERLOGGED, world.getFluidState(pos).getType() == Fluids.WATER);
+        FluidState fluidstate = world.getFluidState(pos);
+        return this.defaultBlockState().setValue(X_AXIS, facing == Direction.Axis.X || this.shouldConnectOnAxis(world, pos, Direction.Axis.X)).setValue(Y_AXIS, facing == Direction.Axis.Y || this.shouldConnectOnAxis(world, pos, Direction.Axis.Y)).setValue(Z_AXIS, facing == Direction.Axis.Z || this.shouldConnectOnAxis(world, pos, Direction.Axis.Z)).setValue(DEFAULT_AXIS, facing).setValue(WATERLOGGED, fluidstate.getType() == Fluids.WATER);
     }
 
     @Override
     public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor world, BlockPos currentPos, BlockPos facingPos) {
-        /*if (state.getValue(WATERLOGGED)) {
-            world.getLiquidTicks().scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
-        }*/
+        if (state.getValue(WATERLOGGED)) {
+            world.scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
+        }
         state = state.setValue(X_AXIS, this.getDefaultAxis(state) == Direction.Axis.X || this.shouldConnectOnAxis(world, currentPos, Direction.Axis.X)).setValue(Y_AXIS, this.getDefaultAxis(state) == Direction.Axis.Y || this.shouldConnectOnAxis(world, currentPos, Direction.Axis.Y)).setValue(Z_AXIS, this.getDefaultAxis(state) == Direction.Axis.Z || this.shouldConnectOnAxis(world, currentPos, Direction.Axis.Z));
         BlockEntity tile = world.getBlockEntity(currentPos);
         if (tile instanceof BeamTileEntity) {
             ((BeamTileEntity) tile).update(state);
         }
         return state;
+    }
+
+    @Override
+    public FluidState getFluidState(BlockState state) {
+        return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
     }
 
     @Override
@@ -213,4 +229,5 @@ public class BeamBlock extends BaseEntityBlock implements SimpleWaterloggedBlock
     public RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;
     }
+
 }

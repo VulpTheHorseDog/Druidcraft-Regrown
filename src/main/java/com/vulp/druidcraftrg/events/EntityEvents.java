@@ -45,7 +45,7 @@ public class EntityEvents {
                     SpawnDataHolder holder = spawnData.get().getSpawnData();
                     boolean flag = holder != null && pos.equals(holder.getPos()) && dimension.equals(holder.getDimension());
                     if (!flag) {
-                        player.sendMessage(new TranslatableComponent("block.druidcraftrg.set_temp_spawn"), Util.NIL_UUID);
+                        player.sendMessage(new TranslatableComponent("block.druidcraftrg.bedroll.set_temp_spawn"), Util.NIL_UUID);
                     }
                     spawnData.get().setSpawnData(new SpawnDataHolder(pos, dimension, player.yRot, false));
                     event.setCanceled(true);
@@ -53,5 +53,7 @@ public class EntityEvents {
             }
         }
     }
+
+
 
 }

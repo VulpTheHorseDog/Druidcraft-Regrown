@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -82,22 +84,37 @@ public class PlatformBlock extends Block implements SimpleWaterloggedBlock, IKni
         BlockState clickedBlock = world.getBlockState(pos.relative(face.getOpposite()));
         Player player = context.getPlayer();
         boolean cardinal = face != Direction.UP && face != Direction.DOWN;
-        return this.defaultBlockState().setValue(WALL, cardinal && clickedBlock.isFaceSturdy(world, pos, face)).setValue(OPEN, player == null || !player.isShiftKeyDown()).setValue(FACING, cardinal ? face : context.getHorizontalDirection().getOpposite());
+        return this.defaultBlockState().setValue(WALL, cardinal && clickedBlock.isFaceSturdy(world, pos, face)).setValue(OPEN, player == null || !player.isShiftKeyDown()).setValue(FACING, cardinal ? face : context.getHorizontalDirection().getOpposite()).setValue(WATERLOGGED, world.getFluidState(pos).getType() == Fluids.WATER);
     }
 
     @Override
     public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor world, BlockPos currentPos, BlockPos facingPos) {
-/*        if (state.getValue(WATERLOGGED)) {
-            world.getLiquidTicks().scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
-        }*/
+        if (state.getValue(WATERLOGGED)) {
+            world.scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickDelay(world));
+        }
         Direction face = state.getValue(FACING);
         boolean wall = world.getBlockState(currentPos.relative(face.getOpposite())).isFaceSturdy(world, currentPos, face);
         return state.setValue(WALL, wall);
     }
 
     @Override
+    public FluidState getFluidState(BlockState state) {
+        return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
+    }
+
+    @Override
     public boolean propagatesSkylightDown(BlockState p_200123_1_, BlockGetter p_200123_2_, BlockPos p_200123_3_) {
         return false;
+    }
+
+    @Override
+    public int getFlammability(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 20;
+    }
+
+    @Override
+    public int getFireSpreadSpeed(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 5;
     }
 
     @Override

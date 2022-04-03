@@ -1,9 +1,12 @@
 package com.vulp.druidcraftrg.blocks;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.AirBlock;
 import net.minecraft.world.level.block.Block;
@@ -14,6 +17,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraftforge.common.IPlantable;
 
 import java.util.Random;
 
@@ -21,12 +25,14 @@ public class DoubleCropBlock extends CropBlock {
 
     public static final BooleanProperty BOTTOM = BlockStateProperties.BOTTOM;
     private final VoxelShape[] SHAPE_ARRAY;
+    private final ItemLike SEED_ITEM;
 
-    public DoubleCropBlock(double radius, Properties properties) {
+    public DoubleCropBlock(double shapeRadius, ItemLike seedItem, Properties properties) {
         super(properties);
-        radius = Mth.clamp(radius, 0.0D, 8.0D);
-        double a = 8.0D - radius;
-        double b = 8.0D + radius;
+        shapeRadius = Mth.clamp(shapeRadius, 0.0D, 8.0D);
+        double a = 8.0D - shapeRadius;
+        double b = 8.0D + shapeRadius;
+        SEED_ITEM = seedItem;
         this.SHAPE_ARRAY = new VoxelShape[]{
                 Block.box(a, 0.0D, a, b, 2.0D, b),
                 Block.box(a, 0.0D, a, b, 4.0D, b),
@@ -42,6 +48,11 @@ public class DoubleCropBlock extends CropBlock {
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter reader, BlockPos pos, CollisionContext context) {
         return SHAPE_ARRAY[state.getValue(this.getAgeProperty())];
+    }
+
+    @Override
+    protected ItemLike getBaseSeedId() {
+        return SEED_ITEM;
     }
 
     private boolean isBottom(BlockState state) {
@@ -66,6 +77,16 @@ public class DoubleCropBlock extends CropBlock {
             }
         }
 
+    }
+
+    @Override
+    public int getFlammability(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 60;
+    }
+
+    @Override
+    public int getFireSpreadSpeed(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return 30;
     }
 
     private boolean isAirAbove(BlockGetter reader, BlockPos pos) {
@@ -107,7 +128,12 @@ public class DoubleCropBlock extends CropBlock {
 
     @Override
     protected boolean mayPlaceOn(BlockState state, BlockGetter reader, BlockPos pos) {
-        return super.mayPlaceOn(state, reader, pos) || state.getBlock() == this && this.isMaxAge(state);
+        return super.mayPlaceOn(state, reader, pos) || (state.getBlock() == this && this.isMaxAge(state)) || state.is(BlockTags.DIRT);
+    }
+
+    @Override
+    public boolean canSustainPlant(BlockState state, BlockGetter world, BlockPos pos, Direction facing, IPlantable plantable) {
+        return super.canSustainPlant(state, world, pos, facing, plantable);
     }
 
     private boolean canGrowUpward(BlockGetter reader, BlockState state, BlockPos pos) {
