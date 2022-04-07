@@ -44,11 +44,13 @@ public abstract class PlayerListMixin {
 
     @Inject(at = @At("HEAD"), method = "respawn", cancellable = true)
     private void respawn(ServerPlayer player, boolean bool, CallbackInfoReturnable<ServerPlayer> cir) {
+        player.reviveCaps();
         Optional<TempSpawnCapability> spawnData = player.getCapability(TempSpawnProvider.TEMP_SPAWN_CAPABILITY).resolve();
         if (spawnData.isPresent() && spawnData.get().hasSpawnData()) {
             SpawnDataHolder holder = spawnData.get().getSpawnData();
             ServerLevel ServerLevel = this.server.getLevel(holder.getDimension());
             if (holder.getPos() != null && ServerLevel.getBlockState(holder.getPos()).getBlock() instanceof BedrollBlock) {
+                player.invalidateCaps();
                 this.players.remove(player);
                 player.getLevel().removePlayerImmediately(player, Entity.RemovalReason.DISCARDED);
                 float angle = holder.getAngle();
