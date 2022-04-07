@@ -32,7 +32,7 @@ public class DruidcraftRegrownRegistry {
     public static final CreativeModeTab DC_TAB = new CreativeModeTab("druidcraftrg") {
         @Override
         public ItemStack makeIcon() {
-            return new ItemStack(ItemInit.hemp_seeds); // TEMPORARY
+            return new ItemStack(ItemInit.hemp_seeds); // TEMPORARY ICON
         }
     };
 

@@ -19,9 +19,9 @@ public abstract class LivingEntityMixin {
 
     @Shadow public abstract boolean isEffectiveAi();
 
-    @Shadow public abstract Vec3 handleRelativeFrictionAndCalculateMovement(Vec3 p_233633_1_, float p_233633_2_);
+    @Shadow public abstract Vec3 handleRelativeFrictionAndCalculateMovement(Vec3 p_21075_, float p_21076_);
 
-    @Shadow public abstract void calculateEntityAnimation(LivingEntity p_233629_1_, boolean p_233629_2_);
+    @Shadow public abstract void calculateEntityAnimation(LivingEntity p_21044_, boolean p_21045_);
 
     // TODO: Animation of player arms while on rope? Alternate one when player is hanging underneath and no animation when player is on top.
 
